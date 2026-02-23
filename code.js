@@ -1,3 +1,5 @@
+// GitHub version
+
 let pieceTypes = [
     {name: "pawn", value: 1}, // 0
     {name: "knight", value: 3}, // 1
@@ -47,14 +49,14 @@ function getLegalMoves(board, player){
                     addPawnMoves(i, moveTo-1);
                 }
             } else if (pieceType == 1) { // knights
-                if (i < 48) {
+                if (i < 56) {
                     if (i%8 > 1 && board[i+6].player != player) {
                         legalMoves.push({pieceIndex: i, moveTo: i+6, notes: []});
                     }
                     if (i%8 < 6 && board[i+10].player != player) {
                         legalMoves.push({pieceIndex: i, moveTo: i+10, notes: []});
                     }
-                    if (i < 40) {
+                    if (i < 48) {
                         if (i%8 > 0 && board[i+15].player != player) {
                             legalMoves.push({pieceIndex: i, moveTo: i+15, notes: []});
                         }
@@ -90,7 +92,6 @@ function getLegalMoves(board, player){
                         x += xm;
                         y += ym;
                         if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-                            console.log(x, y);
                             if (board[y*8+x].player != player) {
                                 legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
                                 if (board[y*8+x].player == 1-player) {
@@ -110,7 +111,8 @@ function getLegalMoves(board, player){
         }
     }
     function addPawnMoves(pieceIndex, moveTo){
-        if (moveTo < 8 || moveTo > 48) {
+        if (moveTo < 8 || moveTo > 56) {
+            console.log(pieceIndex, moveTo);
             for (let i=1; i<5; i++) {
                 legalMoves.push({pieceIndex: pieceIndex, moveTo: moveTo, notes: ["promote", i]});
             }
