@@ -28,6 +28,10 @@ for (let i=0; i<2; i++) {
 }
 
 function getLegalMoves(board, player){
+    let bishopXM = (j)=>{return (j%2)*2-1};
+    let bishopYM = (j)=>{return Math.floor(j/2)*2-1};
+    let rookXM = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 0)};
+    let rookYM = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 1)};
     let boardStartSide = (board.length-1)*player;
     let moveDirection = 1-player*2;
     let legalMoves = [];
@@ -86,13 +90,12 @@ function getLegalMoves(board, player){
                     }
                 }
             } else if (pieceType == 2) { // bishops
-                let xm = (j)=>{return (j%2)*2-1};
-                let ym = (j)=>{return Math.floor(j/2)*2-1};
-                addRangedMoves(i, xm, ym);
+                addRangedMoves(i, bishopXM, bishopYM);
             } else if (pieceType == 3) { // rooks
-                let xm = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 0)};
-                let ym = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 1)};
-                addRangedMoves(i, xm, ym);
+                addRangedMoves(i, rookXM, rookYM);
+            } else if (pieceType == 4) { // queens
+                addRangedMoves(i, bishopXM, bishopYM);
+                addRangedMoves(i, rookXM, rookYM);
             }
         }
     }
