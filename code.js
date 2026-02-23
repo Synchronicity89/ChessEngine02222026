@@ -86,53 +86,13 @@ function getLegalMoves(board, player){
                     }
                 }
             } else if (pieceType == 2) { // bishops
-                for (let j=0; j<4; j++) {
-                    let done = false;
-                    let x = i%8;
-                    let y = Math.floor(i/8);
-                    let xm = (j%2)*2-1;
-                    let ym = Math.floor(j/2)*2-1;
-                    while (!done) {
-                        x += xm;
-                        y += ym;
-                        if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-                            if (board[y*8+x].player != player) {
-                                legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
-                                if (board[y*8+x].player == 1-player) {
-                                    done = true;
-                                }
-                            } else {
-                                done = true;
-                            }
-                        } else {
-                            done = true;
-                        }
-                    }
-                }
+                let xm = (j)=>{return (j%2)*2-1};
+                let ym = (j)=>{return Math.floor(j/2)*2-1};
+                addRangedMoves(i, xm, ym);
             } else if (pieceType == 3) { // rooks
-                for (let j=0; j<4; j++) {
-                    let done = false;
-                    let x = i%8;
-                    let y = Math.floor(i/8);
-                    let xm = ((j%2)*2-1)*(Math.floor(j/2) == 0);
-                    let ym = ((j%2)*2-1)*(Math.floor(j/2) == 1);
-                    while (!done) {
-                        x += xm;
-                        y += ym;
-                        if (x >= 0 && x < 8 && y >= 0 && y < 8) {
-                            if (board[y*8+x].player != player) {
-                                legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
-                                if (board[y*8+x].player == 1-player) {
-                                    done = true;
-                                }
-                            } else {
-                                done = true;
-                            }
-                        } else {
-                            done = true;
-                        }
-                    }
-                }
+                let xm = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 0)};
+                let ym = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 1)};
+                addRangedMoves(i, xm, ym);
             }
         }
     }
@@ -143,6 +103,31 @@ function getLegalMoves(board, player){
             }
         } else {
             legalMoves.push({pieceIndex: pieceIndex, moveTo: moveTo, notes: []});
+        }
+    }
+    function addRangedMoves(i, xmFunc, ymFunc){
+        for (let j=0; j<4; j++) {
+            let done = false;
+            let x = i%8;
+            let y = Math.floor(i/8);
+            let xm = xmFunc(j);
+            let ym = ymFunc(j);
+            while (!done) {
+                x += xm;
+                y += ym;
+                if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                    if (board[y*8+x].player != player) {
+                        legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
+                        if (board[y*8+x].player == 1-player) {
+                            done = true;
+                        }
+                    } else {
+                        done = true;
+                    }
+                } else {
+                    done = true;
+                }
+            }
         }
     }
     return legalMoves;
