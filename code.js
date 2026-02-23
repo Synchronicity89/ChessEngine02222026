@@ -42,11 +42,15 @@ function getLegalMoves(board, player){
                         legalMoves.push({pieceIndex: i, moveTo: i+16*moveDirection, notes: []});
                     }
                 }
-                if (board[moveTo+1].player == 1-player && moveTo%8 != 7) {
-                    addPawnMoves(i, moveTo+1);
+                if (moveTo%8 != 7) {
+                    if (board[moveTo+1].player == 1-player){
+                        addPawnMoves(i, moveTo+1);
+                    }
                 }
-                if (board[moveTo-1].player == 1-player && moveTo%8 != 0) {
-                    addPawnMoves(i, moveTo-1);
+                if (moveTo%8 != 0) {
+                    if (board[moveTo-1].player == 1-player) {
+                        addPawnMoves(i, moveTo-1);
+                    }
                 }
             } else if (pieceType == 1) { // knights
                 if (i < 56) {
@@ -112,7 +116,6 @@ function getLegalMoves(board, player){
     }
     function addPawnMoves(pieceIndex, moveTo){
         if (moveTo < 8 || moveTo > 56) {
-            console.log(pieceIndex, moveTo);
             for (let i=1; i<5; i++) {
                 legalMoves.push({pieceIndex: pieceIndex, moveTo: moveTo, notes: ["promote", i]});
             }
@@ -122,5 +125,3 @@ function getLegalMoves(board, player){
     }
     return legalMoves;
 }
-
-console.log(getLegalMoves(board, 0));
