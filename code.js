@@ -66,35 +66,12 @@ function getLegalMoves(board, player){
                     }
                 }
             } else if (pieceType == 1) { // knights
-                if (i < 56) {
-                    if (i%8 > 1 && board[i+6].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: i+6, notes: []});
-                    }
-                    if (i%8 < 6 && board[i+10].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: i+10, notes: []});
-                    }
-                    if (i < 48) {
-                        if (i%8 > 0 && board[i+15].player != player) {
-                            legalMoves.push({pieceIndex: i, moveTo: i+15, notes: []});
-                        }
-                        if (i%8 < 7 && board[i+17].player != player) {
-                            legalMoves.push({pieceIndex: i, moveTo: i+17, notes: []});
-                        }
-                    }
-                }
-                if (i > 8) {
-                    if (i%8 > 1 && board[i-10].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: i-10, notes: []});
-                    }
-                    if (i%8 < 6 && board[i-6].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: i-6, notes: []});
-                    }
-                    if (i > 16) {
-                        if (i%8 > 0 && board[i-17].player != player) {
-                            legalMoves.push({pieceIndex: i, moveTo: i-17, notes: []});
-                        }
-                        if (i%8 < 7 && board[i-15].player != player) {
-                            legalMoves.push({pieceIndex: i, moveTo: i-15, notes: []});
+                for (let j=0; j<8; j++) {
+                    let x = i%8+Math.round(Math.cos((j+.5)*Math.PI/4)*2);
+                    let y = Math.floor(i/8)+Math.round(Math.sin((j+.5)*Math.PI/4)*2);
+                    if (inBoardBounds(x, y)) {
+                        if (board[y*8+x].player != player) {
+                            legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
                         }
                     }
                 }
