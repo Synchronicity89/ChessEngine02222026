@@ -46,6 +46,30 @@
             <button type="button" data-piece-type="2"></button>
             <button type="button" data-piece-type="1"></button>
         </div>
+        <details open>
+            <summary>Position / Notation</summary>
+            <div>
+                <label for="fenText">FEN:</label>
+                <input id="fenText" type="text" size="80">
+                <button id="copyFen" type="button">Copy FEN</button>
+                <button id="loadFen" type="button">Load FEN</button>
+            </div>
+            <div>
+                <label for="pgnText">PGN:</label><br>
+                <textarea id="pgnText" rows="6" cols="80"></textarea>
+            </div>
+            <div>
+                <button id="copyPgn" type="button">Copy PGN</button>
+                <button id="loadPgn" type="button">Load PGN</button>
+            </div>
+            <div>
+                <button id="goStart" type="button">|&lt;</button>
+                <button id="goBack" type="button">&lt;</button>
+                <button id="goForward" type="button">&gt;</button>
+                <button id="goEnd" type="button">&gt;|</button>
+                <span id="moveInfo"></span>
+            </div>
+        </details>
         <script src="code.js"></script>
         <script src="ui.js"></script>
     </body>
