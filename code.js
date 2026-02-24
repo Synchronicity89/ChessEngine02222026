@@ -45,8 +45,11 @@ function getLegalMoves(board, player){
                 let moveTo = i+8*moveDirection;
                 if (board[moveTo].player == undefined) {
                     addPawnMoves(i, moveTo);
+                    let moveTo2 = i+16*moveDirection;
                     if (Math.abs(boardStartSide-i) < 16) {
-                        legalMoves.push({pieceIndex: i, moveTo: i+16*moveDirection, notes: []});
+                        if (board[moveTo2].player == undefined) {
+                            legalMoves.push({pieceIndex: i, moveTo: moveTo2, notes: []});
+                        }
                     }
                 }
                 if (moveTo%8 != 7) {
