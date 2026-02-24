@@ -86,7 +86,17 @@ function getLegalMoves(board, player){
                         let y = Math.floor(i/8)+k;
                         if (inBoardBounds(x, y)) {
                             if (board[y*8+x].player != player) {
-                                legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
+                                let safeSquare = true;
+                                let knightDistIndices = getKnightDistIndices(y*8+x);
+                                for (let k=0; k<knightDistIndices.length; k++) {
+                                    let square = board[knightDistIndices[k]];
+                                    if (square.player == 1-player && square.pieceType == 1) {
+                                        safeSquare = false;
+                                    }
+                                }
+                                if (safeSquare) {
+                                    legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
+                                }
                             }
                         }
                     }
