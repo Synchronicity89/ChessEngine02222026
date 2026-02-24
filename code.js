@@ -41,99 +41,111 @@ function getLegalMoves(board, player){
     let boardStartSide = (board.length-1)*player;
     let moveDirection = 1-player*2;
     let legalMoves = [];
+    let kingIndex;
     for (let i=0; i<board.length; i++) {
-        if (board[i].player == player) {
-            let pieceType = board[i].pieceType;
-            if (pieceType == 0) { // pawns
-                let moveTo = i+8*moveDirection;
-                if (board[moveTo].player == undefined) {
-                    addPawnMoves(i, moveTo);
-                    let moveTo2 = i+16*moveDirection;
-                    if (Math.abs(boardStartSide-i) < 16) {
-                        if (board[moveTo2].player == undefined) {
-                            legalMoves.push({pieceIndex: i, moveTo: moveTo2, notes: []});
-                        }
-                    }
-                }
-                if (moveTo%8 != 7) {
-                    if (board[moveTo+1].player == 1-player){
-                        addPawnMoves(i, moveTo+1);
-                    }
-                }
-                if (moveTo%8 != 0) {
-                    if (board[moveTo-1].player == 1-player) {
-                        addPawnMoves(i, moveTo-1);
-                    }
-                }
-            } else if (pieceType == 1) { // knights
-                let knightDistIndices = getKnightDistIndices(i);
-                for (let j=0; j<knightDistIndices.length; j++) {
-                    if (board[knightDistIndices[j]].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: knightDistIndices[j], notes: []});
-                    }
-                }
-            } else if (pieceType == 2) { // bishops
-                addRangedMoves(i, bishopXM, bishopYM);
-            } else if (pieceType == 3) { // rooks
-                addRangedMoves(i, rookXM, rookYM);
-            } else if (pieceType == 4) { // queens
-                addRangedMoves(i, bishopXM, bishopYM);
-                addRangedMoves(i, rookXM, rookYM);
-            } else if (pieceType == 5) { // kings
-                for (let j=-1; j<2; j++) {
-                    for (let k=-1; k<2; k++) {
-                        let x = i%8+j;
-                        let y = Math.floor(i/8)+k;
-                        if (inBoardBounds(x, y)) {
-                            let moveToIndex = y*8+x;
-                            if (board[moveToIndex].player != player) {
-                                let safeSquare = true;
-                                let knightDistIndices = getKnightDistIndices(moveToIndex);
-                                for (let l=0; l<knightDistIndices.length; l++) {
-                                    let square = board[knightDistIndices[l]];
-                                    if (square.player == 1-player && square.pieceType == 1) {
-                                        safeSquare = false;
-                                    }
-                                }
-                                rangedIterator(moveToIndex, bishopXM, bishopYM, ()=>{}, (index)=>{
-                                    let square = board[index];
-                                    if (square.pieceType == 2 || square.pieceType == 4) {
-                                        safeSquare = false;
-                                    }
-                                });
-                                rangedIterator(moveToIndex, rookXM, rookYM, ()=>{}, (index)=>{
-                                    let square = board[index];
-                                    if (square.pieceType == 3 || square.pieceType == 4) {
-                                        safeSquare = false;
-                                    }
-                                });
-                                for (let l=-1; l<2; l+=2) {
-                                    if (inBoardBounds(x+l, y+moveDirection)) {
-                                        let square = board[(y+moveDirection)*8+x+l];
-                                        if (square.player == 1-player && square.pieceType == 0) {
-                                            safeSquare = false;
-                                        }
-                                    }
-                                }
-                                for (let l=-1; l<2; l++) {
-                                    for (let m=-1; m<2; m++) {
-                                        if (inBoardBounds(x+l, y+m)) {
-                                            let square = board[(y+m)*8+x+l];
-                                            if (square.player == 1-player && square.pieceType == 5){
-                                                safeSquare = false;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (safeSquare) {
-                                    legalMoves.push({pieceIndex: i, moveTo: moveToIndex, notes: []});
-                                }
-                            }
-                        }
+        if (board[i].player == player && board[i].pieceType == 5) {
+            kingIndex = i;
+        }
+    }
+    for (let j = -1; j < 2; j++) {
+        for (let k = -1; k < 2; k++) {
+            let x = kingIndex % 8 + j;
+            let y = Math.floor(kingIndex / 8) + k;
+            if (inBoardBounds(x, y)) {
+                let moveToIndex = y * 8 + x;
+                if (board[moveToIndex].player != player) {
+                    if (squareNotAttacked(moveToIndex)) {
+                        legalMoves.push({ pieceIndex: kingIndex, moveTo: moveToIndex, notes: [] });
                     }
                 }
             }
         }
+    }
+    if (squareNotAttacked(kingIndex)) {
+        for (let i=0; i<board.length; i++) {
+            if (board[i].player == player) {
+                let pieceType = board[i].pieceType;
+                if (pieceType == 0) { // pawns
+                    let moveTo = i+8*moveDirection;
+                    if (board[moveTo].player == undefined) {
+                        addPawnMoves(i, moveTo);
+                        let moveTo2 = i+16*moveDirection;
+                        if (Math.abs(boardStartSide-i) < 16) {
+                            if (board[moveTo2].player == undefined) {
+                                legalMoves.push({pieceIndex: i, moveTo: moveTo2, notes: []});
+                            }
+                        }
+                    }
+                    if (moveTo%8 != 7) {
+                        if (board[moveTo+1].player == 1-player){
+                            addPawnMoves(i, moveTo+1);
+                        }
+                    }
+                    if (moveTo%8 != 0) {
+                        if (board[moveTo-1].player == 1-player) {
+                            addPawnMoves(i, moveTo-1);
+                        }
+                    }
+                } else if (pieceType == 1) { // knights
+                    let knightDistIndices = getKnightDistIndices(i);
+                    for (let j=0; j<knightDistIndices.length; j++) {
+                        if (board[knightDistIndices[j]].player != player) {
+                            legalMoves.push({pieceIndex: i, moveTo: knightDistIndices[j], notes: []});
+                        }
+                    }
+                } else if (pieceType == 2) { // bishops
+                    addRangedMoves(i, bishopXM, bishopYM);
+                } else if (pieceType == 3) { // rooks
+                    addRangedMoves(i, rookXM, rookYM);
+                } else if (pieceType == 4) { // queens
+                    addRangedMoves(i, bishopXM, bishopYM);
+                    addRangedMoves(i, rookXM, rookYM);
+                }
+            }
+        }
+    }
+    function squareNotAttacked(i) {
+        let x = i%8;
+        let y = Math.floor(i/8);
+        let safeSquare = true;
+        let knightDistIndices = getKnightDistIndices(i);
+        for (let l = 0; l < knightDistIndices.length; l++) {
+            let square = board[knightDistIndices[l]];
+            if (square.player == 1 - player && square.pieceType == 1) {
+                safeSquare = false;
+            }
+        }
+        rangedIterator(i, bishopXM, bishopYM, () => { }, (index) => {
+            let square = board[index];
+            if (square.pieceType == 2 || square.pieceType == 4) {
+                safeSquare = false;
+            }
+        });
+        rangedIterator(i, rookXM, rookYM, () => { }, (index) => {
+            let square = board[index];
+            if (square.pieceType == 3 || square.pieceType == 4) {
+                safeSquare = false;
+            }
+        });
+        for (let l = -1; l < 2; l += 2) {
+            if (inBoardBounds(x + l, y + moveDirection)) {
+                let square = board[(y + moveDirection) * 8 + x + l];
+                if (square.player == 1 - player && square.pieceType == 0) {
+                    safeSquare = false;
+                }
+            }
+        }
+        for (let l = -1; l < 2; l++) {
+            for (let m = -1; m < 2; m++) {
+                if (inBoardBounds(x + l, y + m)) {
+                    let square = board[(y + m) * 8 + x + l];
+                    if (square.player == 1 - player && square.pieceType == 5) {
+                        safeSquare = false;
+                    }
+                }
+            }
+        }
+        return safeSquare;
     }
     function addPawnMoves(pieceIndex, moveTo){
         if (moveTo < 8 || moveTo > 56) {
