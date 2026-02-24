@@ -54,14 +54,14 @@ function getLegalMoves(board, player){
             if (inBoardBounds(x, y)) {
                 let moveToIndex = y * 8 + x;
                 if (board[moveToIndex].player != player) {
-                    if (squareNotAttacked(moveToIndex)) {
+                    if (getSquareAttackerCount(moveToIndex) == 0) {
                         legalMoves.push({ pieceIndex: kingIndex, moveTo: moveToIndex, notes: [] });
                     }
                 }
             }
         }
     }
-    if (squareNotAttacked(kingIndex)) {
+    if (getSquareAttackerCount(kingIndex) < 2) {
         for (let i=0; i<board.length; i++) {
             if (board[i].player == player) {
                 let pieceType = board[i].pieceType;
@@ -104,34 +104,34 @@ function getLegalMoves(board, player){
             }
         }
     }
-    function squareNotAttacked(i) {
+    function getSquareAttackerCount(i) {
         let x = i%8;
         let y = Math.floor(i/8);
-        let safeSquare = true;
+        let attackerCount = 0;
         let knightDistIndices = getKnightDistIndices(i);
         for (let l = 0; l < knightDistIndices.length; l++) {
             let square = board[knightDistIndices[l]];
             if (square.player == 1 - player && square.pieceType == 1) {
-                safeSquare = false;
+                attackerCount ++;
             }
         }
         rangedIterator(i, bishopXM, bishopYM, () => { }, (index) => {
             let square = board[index];
             if (square.pieceType == 2 || square.pieceType == 4) {
-                safeSquare = false;
+                attackerCount ++;
             }
         });
         rangedIterator(i, rookXM, rookYM, () => { }, (index) => {
             let square = board[index];
             if (square.pieceType == 3 || square.pieceType == 4) {
-                safeSquare = false;
+                attackerCount ++;
             }
         });
         for (let l = -1; l < 2; l += 2) {
             if (inBoardBounds(x + l, y + moveDirection)) {
                 let square = board[(y + moveDirection) * 8 + x + l];
                 if (square.player == 1 - player && square.pieceType == 0) {
-                    safeSquare = false;
+                    attackerCount ++;
                 }
             }
         }
@@ -140,12 +140,12 @@ function getLegalMoves(board, player){
                 if (inBoardBounds(x + l, y + m)) {
                     let square = board[(y + m) * 8 + x + l];
                     if (square.player == 1 - player && square.pieceType == 5) {
-                        safeSquare = false;
+                        attackerCount ++;
                     }
                 }
             }
         }
-        return safeSquare;
+        return attackerCount;
     }
     function addPawnMoves(pieceIndex, moveTo){
         if (moveTo < 8 || moveTo > 56) {
