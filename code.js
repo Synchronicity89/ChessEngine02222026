@@ -89,8 +89,8 @@ function getLegalMoves(board, player){
                             if (board[moveToIndex].player != player) {
                                 let safeSquare = true;
                                 let knightDistIndices = getKnightDistIndices(moveToIndex);
-                                for (let k=0; k<knightDistIndices.length; k++) {
-                                    let square = board[knightDistIndices[k]];
+                                for (let l=0; l<knightDistIndices.length; l++) {
+                                    let square = board[knightDistIndices[l]];
                                     if (square.player == 1-player && square.pieceType == 1) {
                                         safeSquare = false;
                                     }
@@ -107,11 +107,21 @@ function getLegalMoves(board, player){
                                         safeSquare = false;
                                     }
                                 });
-                                for (let i=-1; i<2; i+=2) {
-                                    if (inBoardBounds(x+i, y+moveDirection)) {
-                                        let square = board[(y+moveDirection)*8+x+i];
+                                for (let l=-1; l<2; l+=2) {
+                                    if (inBoardBounds(x+l, y+moveDirection)) {
+                                        let square = board[(y+moveDirection)*8+x+l];
                                         if (square.player == 1-player && square.pieceType == 0) {
                                             safeSquare = false;
+                                        }
+                                    }
+                                }
+                                for (let l=-1; l<2; l++) {
+                                    for (let m=-1; m<2; m++) {
+                                        if (inBoardBounds(x+l, y+m)) {
+                                            let square = board[(y+m)*8+x+l];
+                                            if (square.player == 1-player && square.pieceType == 5){
+                                                safeSquare = false;
+                                            }
                                         }
                                     }
                                 }
