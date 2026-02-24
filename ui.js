@@ -23,6 +23,7 @@ let goBackButton = document.getElementById("goBack");
 let goForwardButton = document.getElementById("goForward");
 let goEndButton = document.getElementById("goEnd");
 let moveInfo = document.getElementById("moveInfo");
+let plyList = document.getElementById("plyList");
 
 let squareSize = canvas.width / 8;
 let selectedSquare = undefined;
@@ -449,6 +450,45 @@ function buildPgnText(moves, startPlayer, result) {
     return parts.join(" ");
 }
 
+function getMoveTextForDisplay(moveRecord) {
+    return moveRecord.san || moveRecord.coordinate || "";
+}
+
+function renderPlyList() {
+    if (!plyList) {
+        return;
+    }
+
+    plyList.innerHTML = "";
+
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        let row = document.createElement("div");
+        row.style.display = "flex";
+        row.style.gap = "8px";
+
+        let whiteCell = document.createElement("div");
+        whiteCell.style.width = "100px";
+        whiteCell.textContent = (Math.floor(i / 2) + 1) + ". " + getMoveTextForDisplay(moveHistory[i]);
+        if (currentPly - 1 == i) {
+            whiteCell.style.backgroundColor = "#ffef99";
+        }
+
+        row.appendChild(whiteCell);
+
+        let blackCell = document.createElement("div");
+        blackCell.style.width = "100px";
+        if (i + 1 < moveHistory.length) {
+            blackCell.textContent = getMoveTextForDisplay(moveHistory[i + 1]);
+            if (currentPly - 1 == i + 1) {
+                blackCell.style.backgroundColor = "#ffef99";
+            }
+        }
+
+        row.appendChild(blackCell);
+        plyList.appendChild(row);
+    }
+}
+
 function boardToFen() {
     let rankParts = [];
 
@@ -561,13 +601,11 @@ function updateNotationUI() {
         fenTextInput.value = boardToFen();
     }
 
-    if (pgnTextInput) {
-        pgnTextInput.value = buildPgnText(moveHistory.slice(0, currentPly), gameStartPlayer, gameResult);
+    if (moveInfo) {
+        moveInfo.textContent = "Ply " + currentPly + " / " + moveHistory.length;
     }
 
-    if (moveInfo) {
-        moveInfo.textContent = "Move " + currentPly + " / " + moveHistory.length;
-    }
+    renderPlyList();
 }
 
 function goToPly(targetPly) {
@@ -1136,8 +1174,8 @@ loadFenButton.addEventListener("click", function () {
 });
 
 copyPgnButton.addEventListener("click", function () {
-    updateNotationUI();
-    copyTextToClipboard(pgnTextInput.value);
+    let pgnText = buildPgnText(moveHistory, gameStartPlayer, gameResult);
+    copyTextToClipboard(pgnText);
     statusText.textContent = "PGN copied.";
 });
 
@@ -1169,6 +1207,7 @@ loadPgnButton.addEventListener("click", function () {
         }
 
         goToPly(0);
+        pgnTextInput.value = "";
         statusText.textContent = "PGN loaded. At beginning of game.";
     } catch (err) {
         statusText.textContent = "PGN load error: " + err.message;
