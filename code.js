@@ -85,17 +85,30 @@ function getLegalMoves(board, player){
                         let x = i%8+j;
                         let y = Math.floor(i/8)+k;
                         if (inBoardBounds(x, y)) {
-                            if (board[y*8+x].player != player) {
+                            let moveToIndex = y*8+x;
+                            if (board[moveToIndex].player != player) {
                                 let safeSquare = true;
-                                let knightDistIndices = getKnightDistIndices(y*8+x);
+                                let knightDistIndices = getKnightDistIndices(moveToIndex);
                                 for (let k=0; k<knightDistIndices.length; k++) {
                                     let square = board[knightDistIndices[k]];
                                     if (square.player == 1-player && square.pieceType == 1) {
                                         safeSquare = false;
                                     }
                                 }
+                                rangedIterator(moveToIndex, bishopXM, bishopYM, ()=>{}, (index)=>{
+                                    let square = board[index];
+                                    if (square.pieceType == 2 || square.pieceType == 4) {
+                                        safeSquare = false;
+                                    }
+                                });
+                                rangedIterator(moveToIndex, rookXM, rookYM, ()=>{}, (index)=>{
+                                    let square = board[index];
+                                    if (square.pieceType == 3 || square.pieceType == 4) {
+                                        safeSquare = false;
+                                    }
+                                });
                                 if (safeSquare) {
-                                    legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
+                                    legalMoves.push({pieceIndex: i, moveTo: moveToIndex, notes: []});
                                 }
                             }
                         }
@@ -114,6 +127,13 @@ function getLegalMoves(board, player){
         }
     }
     function addRangedMoves(i, xmFunc, ymFunc){
+        rangedIterator(i, xmFunc, ymFunc,
+            (index)=>{legalMoves.push({pieceIndex: i, moveTo: index, notes: []});},
+            ()=>{}
+        );
+    }
+    function rangedIterator(i, xmFunc, ymFunc, onEmptyFunc, onEnemyFunc){
+        // Iterates along 4 paths determined by the xmFunc and ymFunc. Paths terminate if they reach the edge of the board or any piece. It runs the onEmptyFunc for every empty square on the path, and the onEnemyFunc if it reaches an enemy (in which case the path terminates).
         for (let j=0; j<4; j++) {
             let done = false;
             let x = i%8;
@@ -124,9 +144,11 @@ function getLegalMoves(board, player){
                 x += xm;
                 y += ym;
                 if (inBoardBounds(x, y)) {
-                    if (board[y*8+x].player != player) {
-                        legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
-                        if (board[y*8+x].player == 1-player) {
+                    let newIndex = y*8+x;
+                    if (board[newIndex].player != player) {
+                        onEmptyFunc(newIndex);
+                        if (board[newIndex].player == 1-player) {
+                            onEnemyFunc(newIndex);
                             done = true;
                         }
                     } else {
