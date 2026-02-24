@@ -66,13 +66,10 @@ function getLegalMoves(board, player){
                     }
                 }
             } else if (pieceType == 1) { // knights
-                for (let j=0; j<8; j++) {
-                    let x = i%8+Math.round(Math.cos((j+.5)*Math.PI/4)*2);
-                    let y = Math.floor(i/8)+Math.round(Math.sin((j+.5)*Math.PI/4)*2);
-                    if (inBoardBounds(x, y)) {
-                        if (board[y*8+x].player != player) {
-                            legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
-                        }
+                let knightDistIndices = getKnightDistIndices(i);
+                for (let j=0; j<knightDistIndices.length; j++) {
+                    if (board[knightDistIndices[j]].player != player) {
+                        legalMoves.push({pieceIndex: i, moveTo: knightDistIndices[j], notes: []});
                     }
                 }
             } else if (pieceType == 2) { // bishops
@@ -133,6 +130,17 @@ function getLegalMoves(board, player){
     }
     function inBoardBounds(x, y){
         return x >= 0 && x < 8 && y >= 0 && y < 8;
+    }
+    function getKnightDistIndices(i){
+        let knightDistIndices = [];
+        for (let j=0; j<8; j++) {
+            let x = i%8+Math.round(Math.cos((j+.5)*Math.PI/4)*2);
+            let y = Math.floor(i/8)+Math.round(Math.sin((j+.5)*Math.PI/4)*2);
+            if (inBoardBounds(x, y)) {
+                knightDistIndices.push(y*8+x);
+            }
+        }
+        return knightDistIndices;
     }
     return legalMoves;
 }
