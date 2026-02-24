@@ -113,46 +113,6 @@ function createCoordinateMoveToken(move) {
     return token;
 }
 
-function getPieceTypeAt(boardState, index) {
-    let cell = boardState[index];
-    if (!cell) {
-        return undefined;
-    }
-    return cell.pieceType;
-}
-
-function getPlayerAt(boardState, index) {
-    let cell = boardState[index];
-    if (!cell) {
-        return undefined;
-    }
-    return cell.player;
-}
-
-function applyMoveToBoardState(boardState, move) {
-    let newBoard = cloneBoardState(boardState);
-    let from = move.pieceIndex;
-    let to = move.moveTo;
-
-    newBoard[to] = {
-        pieceType: newBoard[from].pieceType,
-        player: newBoard[from].player,
-        notes: newBoard[from].notes || []
-    };
-
-    newBoard[from] = {
-        pieceType: undefined,
-        player: undefined,
-        notes: []
-    };
-
-    if (move.notes && move.notes[0] == "promote") {
-        newBoard[to].pieceType = move.notes[1];
-    }
-
-    return newBoard;
-}
-
 function findKingIndex(boardState, player) {
     for (let i = 0; i < boardState.length; i++) {
         if (boardState[i].player == player && boardState[i].pieceType == 5) {
@@ -160,107 +120,6 @@ function findKingIndex(boardState, player) {
         }
     }
     return undefined;
-}
-
-function isInBounds(x, y) {
-    return x >= 0 && x < 8 && y >= 0 && y < 8;
-}
-
-function isSquareAttackedBy(boardState, targetIndex, attackerPlayer) {
-    let targetX = targetIndex % 8;
-    let targetY = Math.floor(targetIndex / 8);
-
-    let pawnSourceY = targetY - (attackerPlayer == 0 ? 1 : -1);
-    for (let dx = -1; dx <= 1; dx += 2) {
-        let sourceX = targetX + dx;
-        if (isInBounds(sourceX, pawnSourceY)) {
-            let pawnIndex = pawnSourceY * 8 + sourceX;
-            if (getPlayerAt(boardState, pawnIndex) == attackerPlayer && getPieceTypeAt(boardState, pawnIndex) == 0) {
-                return true;
-            }
-        }
-    }
-
-    let knightOffsets = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
-    for (let i = 0; i < knightOffsets.length; i++) {
-        let x = targetX + knightOffsets[i][0];
-        let y = targetY + knightOffsets[i][1];
-        if (isInBounds(x, y)) {
-            let index = y * 8 + x;
-            if (getPlayerAt(boardState, index) == attackerPlayer && getPieceTypeAt(boardState, index) == 1) {
-                return true;
-            }
-        }
-    }
-
-    for (let xDelta = -1; xDelta <= 1; xDelta++) {
-        for (let yDelta = -1; yDelta <= 1; yDelta++) {
-            if (xDelta == 0 && yDelta == 0) {
-                continue;
-            }
-
-            let x = targetX + xDelta;
-            let y = targetY + yDelta;
-            if (isInBounds(x, y)) {
-                let index = y * 8 + x;
-                if (getPlayerAt(boardState, index) == attackerPlayer && getPieceTypeAt(boardState, index) == 5) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    let bishopDirections = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
-    for (let i = 0; i < bishopDirections.length; i++) {
-        let x = targetX;
-        let y = targetY;
-        while (true) {
-            x += bishopDirections[i][0];
-            y += bishopDirections[i][1];
-            if (!isInBounds(x, y)) {
-                break;
-            }
-
-            let index = y * 8 + x;
-            let player = getPlayerAt(boardState, index);
-            let pieceType = getPieceTypeAt(boardState, index);
-            if (player == undefined || pieceType == undefined) {
-                continue;
-            }
-
-            if (player == attackerPlayer && (pieceType == 2 || pieceType == 4)) {
-                return true;
-            }
-            break;
-        }
-    }
-
-    let rookDirections = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    for (let i = 0; i < rookDirections.length; i++) {
-        let x = targetX;
-        let y = targetY;
-        while (true) {
-            x += rookDirections[i][0];
-            y += rookDirections[i][1];
-            if (!isInBounds(x, y)) {
-                break;
-            }
-
-            let index = y * 8 + x;
-            let player = getPlayerAt(boardState, index);
-            let pieceType = getPieceTypeAt(boardState, index);
-            if (player == undefined || pieceType == undefined) {
-                continue;
-            }
-
-            if (player == attackerPlayer && (pieceType == 3 || pieceType == 4)) {
-                return true;
-            }
-            break;
-        }
-    }
-
-    return false;
 }
 
 function getMoveDisambiguation(move, legalMoves, boardBefore) {
@@ -332,7 +191,7 @@ function createSanMoveText(move, boardBefore, player, legalMoves) {
 
     // TODO: use O-O / O-O-O when castling moves are represented by move generation
     let san = "";
-    let capture = getPlayerAt(boardBefore, move.moveTo) != undefined && getPlayerAt(boardBefore, move.moveTo) != player;
+    let capture = boardBefore[move.moveTo].player != undefined && boardBefore[move.moveTo].player != player;
 
     if (pieceType == 0) {
         if (capture) {
@@ -1000,24 +859,7 @@ function getMovesForPlayer(player) {
 }
 
 function makeMove(move) {
-    let from = move.pieceIndex;
-    let to = move.moveTo;
-
-    board[to] = {
-        pieceType: board[from].pieceType,
-        player: board[from].player,
-        notes: board[from].notes || []
-    };
-
-    board[from] = {
-        pieceType: undefined,
-        player: undefined,
-        notes: []
-    };
-
-    if (move.notes && move.notes[0] == "promote") {
-        board[to].pieceType = move.notes[1];
-    }
+    applyMoveInPlace(board, move);
 }
 
 function resetGame() {
