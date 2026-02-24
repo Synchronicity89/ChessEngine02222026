@@ -7,8 +7,45 @@
     <body>
         <h3>Chess Engine Test UI</h3>
         <p id="status">Click a piece, then click a highlighted square.</p>
+        <div>
+            <span>Play as:</span>
+            <button id="playWhite" type="button">White</button>
+            <button id="playRandom" type="button">Random Side</button>
+            <button id="playBlack" type="button">Black</button>
+            <button id="flipBoard" type="button">Flip Board</button>
+            <span id="viewInfo"></span>
+        </div>
+        <details>
+            <summary>Settings</summary>
+            <div>
+                <label for="defaultPromotionPiece">Default promotion piece:</label>
+                <select id="defaultPromotionPiece">
+                    <option value="4" selected>Queen</option>
+                    <option value="3">Rook</option>
+                    <option value="2">Bishop</option>
+                    <option value="1">Knight</option>
+                </select>
+            </div>
+            <div>
+                <label>
+                    <input id="useDefaultPromotion" type="checkbox" checked>
+                    Use default promotion piece
+                </label>
+            </div>
+            <div>
+                <label for="promotionBypassKey">Manual promotion key:</label>
+                <input id="promotionBypassKey" type="text" value="Control">
+            </div>
+        </details>
         <button id="resetGame" type="button">Reset Game</button>
         <canvas id="board" width="480" height="480"></canvas>
+        <div id="promotionChooser" hidden>
+            <span>Promote to:</span>
+            <button type="button" data-piece-type="4"></button>
+            <button type="button" data-piece-type="3"></button>
+            <button type="button" data-piece-type="2"></button>
+            <button type="button" data-piece-type="1"></button>
+        </div>
         <script src="code.js"></script>
         <script src="ui.js"></script>
     </body>
