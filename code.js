@@ -96,6 +96,18 @@ function getLegalMoves(board, player){
             } else if (pieceType == 4) { // queens
                 addRangedMoves(i, bishopXM, bishopYM);
                 addRangedMoves(i, rookXM, rookYM);
+            } else if (pieceType == 5) { // kings
+                for (let j=-1; j<2; j++) {
+                    for (let k=-1; k<2; k++) {
+                        let x = i%8+j;
+                        let y = Math.floor(i/8)+k;
+                        if (inBoardBounds(x, y)) {
+                            if (board[y*8+x].player != player) {
+                                legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -118,7 +130,7 @@ function getLegalMoves(board, player){
             while (!done) {
                 x += xm;
                 y += ym;
-                if (x >= 0 && x < 8 && y >= 0 && y < 8) {
+                if (inBoardBounds(x, y)) {
                     if (board[y*8+x].player != player) {
                         legalMoves.push({pieceIndex: i, moveTo: y*8+x, notes: []});
                         if (board[y*8+x].player == 1-player) {
@@ -132,6 +144,9 @@ function getLegalMoves(board, player){
                 }
             }
         }
+    }
+    function inBoardBounds(x, y){
+        return x >= 0 && x < 8 && y >= 0 && y < 8;
     }
     return legalMoves;
 }
