@@ -321,23 +321,7 @@ function makeMove(move) {
 }
 
 function resetGame() {
-    board = [];
-    for (let i = 0; i < 64; i++) {
-        board.push({pieceType: undefined, player: undefined});
-    }
-
-    for (let i = 0; i < 2; i++) {
-        let boardStartSide = (board.length - 1) * i;
-        let jm = 1 - i * 2;
-        for (let j = 0; j < standardStartingPositionSide.length; j++) {
-            board[boardStartSide + j * jm] = {
-                pieceType: standardStartingPositionSide[j],
-                player: i,
-                notes: []
-            };
-        }
-    }
-
+    boardSetup()
     clearSelection();
     hidePromotionChooser();
     whoseTurn = 0;

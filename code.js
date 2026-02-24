@@ -12,20 +12,23 @@ let pieceTypes = [
 let standardStartingPositionSide = [3, 1, 2, 4, 5, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0];
 
 let board = [];
-for (let i=0; i<64; i++) {
-    board.push({pieceType: undefined, player: undefined});
-}
-for (let i=0; i<2; i++) {
-    let boardStartSide = (board.length-1)*i;
-    let jm = 1-i*2
-    for (let j=0; j<standardStartingPositionSide.length; j++) {
-        board[boardStartSide+j*jm] = {
-            pieceType: standardStartingPositionSide[j],
-            player: i,
-            notes: []
-        };
-        if (i == 1 && standardStartingPositionSide[j] >= 4) {
-            board[boardStartSide+j*jm].pieceType = 9-standardStartingPositionSide[j];
+function boardSetup(){
+    board = [];
+    for (let i=0; i<64; i++) {
+        board.push({pieceType: undefined, player: undefined});
+    }
+    for (let i=0; i<2; i++) {
+        let boardStartSide = (board.length-1)*i;
+        let jm = 1-i*2
+        for (let j=0; j<standardStartingPositionSide.length; j++) {
+            board[boardStartSide+j*jm] = {
+                pieceType: standardStartingPositionSide[j],
+                player: i,
+                notes: []
+            };
+            if (i == 1 && standardStartingPositionSide[j] >= 4) {
+                board[boardStartSide+j*jm].pieceType = 9-standardStartingPositionSide[j];
+            }
         }
     }
 }
