@@ -16,10 +16,11 @@ function scorePosition(board){
 
 function getBestMove(board, player, plies){
     let positionTree = {
-        board: board,
+        board: boardToNumberStringArray(board),
         n: coreCloneGameNotes(coreGetGameNotes()),
         player: player,
         pliesLeft: plies,
+        plyOn: 0,
         score: undefined,
         branches: [],
         bestMoveIndex: undefined,
@@ -27,29 +28,35 @@ function getBestMove(board, player, plies){
     };
     branchPositionTree(positionTree);
     scorePositionTree(positionTree);
+    console.log(positionTree);
     return positionTree.branches[positionTree.bestMoveIndex].moveDone;
 }
 
 function branchPositionTree(positionTree){
-    let legalMoves = getLegalMoves(positionTree.board, positionTree.player, positionTree.n);
+    let legalMoves = getLegalMoves(numberStringArrayToBoard(positionTree.board), positionTree.player, positionTree.n);
     for (let i=0; i<legalMoves.length; i++) {
         let newNotes = coreCloneGameNotes(positionTree.n);
         let newBranch = {
-            board: applyMoveToBoardState(positionTree.board, legalMoves[i], newNotes),
+            board: boardToNumberStringArray(applyMoveToBoardState(numberStringArrayToBoard(positionTree.board), legalMoves[i], newNotes)),
             n: newNotes,
             player: 1-positionTree.player,
             pliesLeft: positionTree.pliesLeft-1,
+            plyOn: positionTree.plyOn+1,
             score: undefined,
             branches: [],
-            moveDone: legalMoves[i]
+            moveDone: undefined
+        }
+        if (newBranch.plyOn == 1) {
+            newBranch.moveDone = legalMoves[i];
         }
         if (newBranch.pliesLeft > 0) {
             branchPositionTree(newBranch);
         } else {
-            newBranch.score = scorePosition(newBranch.board);
+            newBranch.score = scorePosition(numberStringArrayToBoard(newBranch.board));
         }
         positionTree.branches.push(newBranch);
     }
+    positionTree.board = [];
 }
 
 function scorePositionTree(positionTree){

@@ -1051,3 +1051,37 @@ function coreApplyCastleRookMove(boardState, player, side) {
         notes: []
     };
 }
+
+function boardToNumberStringArray(board){
+    let array = [];
+    for (let i=0; i<board.length; i++) {
+        let square = board[i];
+        if (square.player == undefined) {
+            array.push(12);
+        } else {
+            array.push(square.player*6+square.pieceType);
+        }
+        if (square.notes != undefined) {
+            array.push(square.notes.join());
+        } else {
+            array.push("");
+        }
+    }
+    return array;
+}
+
+function numberStringArrayToBoard(array){
+    let board = [];
+    for (let i=0; i<array.length; i+=2) {
+        let square = {notes: array[i+1].split(",")};
+        if (array[i] == 12) {
+            square.pieceType = undefined;
+            square.player = undefined;
+        } else {
+            square.pieceType = array[i]%6;
+            square.player = Math.floor(array[i]/6);
+        }
+        board.push(square);
+    }
+    return board;
+}
