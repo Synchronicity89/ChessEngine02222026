@@ -447,7 +447,11 @@ function clearSelection() {
     highlightedMoves = [];
 }
 
-function pickEngineMove() {
+function pickEngineMove(){
+    return getBestMove(board, enginePlayer, 4);
+}
+
+function pickRandomEngineMove() {
     let moves = getMovesForPlayer(enginePlayer);
     if (moves.length == 0) {
         return undefined;

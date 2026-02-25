@@ -6,7 +6,7 @@ let pieceTypes = [
     {name: "bishop", value: 3}, // 2
     {name: "rook", value: 5}, // 3
     {name: "queen", value: 9}, // 4
-    {name: "king", value: Infinity} // 5
+    {name: "king", value: 1000000} // 5
 ];
 
 let standardStartingPositionSide = [3, 1, 2, 4, 5, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0];
