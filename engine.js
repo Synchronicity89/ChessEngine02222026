@@ -14,62 +14,126 @@ function scorePosition(board){
     return score;
 }
 
+function scoreMoveHeuristic(board, move){
+    let score = 0;
+    let targetSquare = board[move.moveTo];
+
+    if (targetSquare.player != undefined && targetSquare.pieceType != undefined) {
+        score += pieceTypes[targetSquare.pieceType].value * 10;
+    }
+
+    if (move.notes && move.notes[0] == "ep") {
+        score += pieceTypes[0].value * 10;
+    }
+
+    if (move.notes && move.notes[0] == "promote") {
+        score += pieceTypes[move.notes[1]].value;
+    }
+
+    if (move.notes && move.notes[0] == "castle") {
+        score += 2;
+    }
+
+    return score;
+}
+
+function orderMoves(board, legalMoves){
+    let moves = legalMoves.slice();
+    moves.sort((a, b) => scoreMoveHeuristic(board, b) - scoreMoveHeuristic(board, a));
+    return moves;
+}
+
+function scorePositionTree(board, player, pliesLeft, gameNotes, alpha, beta){
+    if (pliesLeft <= 0) {
+        return scorePosition(board);
+    }
+
+    let legalMoves = getLegalMoves(board, player, gameNotes);
+    if (legalMoves.length == 0) {
+        return scorePosition(board);
+    }
+
+    let orderedMoves = orderMoves(board, legalMoves);
+
+    if (player == 0) {
+        let bestScore = -Infinity;
+        for (let i=0; i<orderedMoves.length; i++) {
+            let newNotes = coreCloneGameNotes(gameNotes);
+            let nextBoard = applyMoveToBoardState(board, orderedMoves[i], newNotes);
+            let score = scorePositionTree(nextBoard, 1, pliesLeft-1, newNotes, alpha, beta);
+            if (score > bestScore) {
+                bestScore = score;
+            }
+            if (score > alpha) {
+                alpha = score;
+            }
+            if (alpha >= beta) {
+                break;
+            }
+        }
+        return bestScore;
+    }
+
+    let bestScore = Infinity;
+    for (let i=0; i<orderedMoves.length; i++) {
+        let newNotes = coreCloneGameNotes(gameNotes);
+        let nextBoard = applyMoveToBoardState(board, orderedMoves[i], newNotes);
+        let score = scorePositionTree(nextBoard, 0, pliesLeft-1, newNotes, alpha, beta);
+        if (score < bestScore) {
+            bestScore = score;
+        }
+        if (score < beta) {
+            beta = score;
+        }
+        if (alpha >= beta) {
+            break;
+        }
+    }
+
+    return bestScore;
+}
+
 function getBestMove(board, player, plies){
-    let positionTree = {
-        board: board,
-        n: coreCloneGameNotes(coreGetGameNotes()),
-        player: player,
-        pliesLeft: plies,
-        plyOn: 0,
-        score: undefined,
-        branches: [],
-        bestMoveIndex: undefined,
-        moveDone: undefined
-    };
-    branchPositionTree(positionTree);
-    scorePositionTree(positionTree);
-    return positionTree.branches[positionTree.bestMoveIndex].moveDone;
-}
+    let rootNotes = coreCloneGameNotes(coreGetGameNotes());
+    let legalMoves = getLegalMoves(board, player, rootNotes);
+    if (legalMoves.length == 0) {
+        return undefined;
+    }
 
-function branchPositionTree(positionTree){
-    let legalMoves = getLegalMoves(positionTree.board, positionTree.player, positionTree.n);
-    for (let i=0; i<legalMoves.length; i++) {
-        let newNotes = coreCloneGameNotes(positionTree.n);
-        let newBranch = {
-            board: applyMoveToBoardState(positionTree.board, legalMoves[i], newNotes),
-            n: newNotes,
-            player: 1-positionTree.player,
-            pliesLeft: positionTree.pliesLeft-1,
-            plyOn: positionTree.plyOn+1,
-            score: undefined,
-            branches: [],
-            moveDone: undefined
-        }
-        if (newBranch.plyOn == 1) {
-            newBranch.moveDone = legalMoves[i];
-        }
-        if (newBranch.pliesLeft > 0) {
-            branchPositionTree(newBranch);
+    let orderedMoves = orderMoves(board, legalMoves);
+    let searchDepth = plies - 1;
+    let bestMove = orderedMoves[0];
+    let alpha = -Infinity;
+    let beta = Infinity;
+    let bestScore = player == 0 ? -Infinity : Infinity;
+
+    for (let i=0; i<orderedMoves.length; i++) {
+        let move = orderedMoves[i];
+        let newNotes = coreCloneGameNotes(rootNotes);
+        let nextBoard = applyMoveToBoardState(board, move, newNotes);
+        let score;
+
+        if (searchDepth > 0) {
+            score = scorePositionTree(nextBoard, 1-player, searchDepth, newNotes, alpha, beta);
         } else {
-            newBranch.score = scorePosition(newBranch.board);
+            score = scorePosition(nextBoard);
         }
-        positionTree.branches.push(newBranch);
-    }
-    positionTree.board = [];
-}
 
-function scorePositionTree(positionTree){
-    let bestMove = {index: 0, score: playerToPosNeg[positionTree.player]*(-Infinity)};
-    for (let i=0; i<positionTree.branches.length; i++) {
-        if (positionTree.branches[i].score == undefined) {
-            scorePositionTree(positionTree.branches[i]);
+        if ((player == 0 && score > bestScore) || (player == 1 && score < bestScore)) {
+            bestScore = score;
+            bestMove = move;
         }
-        if (positionTree.branches[i].score > bestMove.score && positionTree.player == 0) {
-            bestMove = {index: i, score: positionTree.branches[i].score};
-        } else if (positionTree.branches[i].score < bestMove.score && positionTree.player == 1) {
-            bestMove = {index: i, score: positionTree.branches[i].score};
+
+        if (player == 0) {
+            if (score > alpha) {
+                alpha = score;
+            }
+        } else {
+            if (score < beta) {
+                beta = score;
+            }
         }
     }
-    positionTree.bestMoveIndex = bestMove.index;
-    positionTree.score = bestMove.score;
+
+    return bestMove;
 }
