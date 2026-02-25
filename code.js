@@ -12,6 +12,107 @@ let pieceTypes = [
 let standardStartingPositionSide = [3, 1, 2, 4, 5, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0];
 
 let board = [];
+let CORE_C_WK = 1;
+let CORE_C_WQ = 2;
+let CORE_C_BK = 4;
+let CORE_C_BQ = 8;
+
+let coreN = undefined;
+
+function coreCreateGameNotes() {
+    return {
+        c: CORE_C_WK | CORE_C_WQ | CORE_C_BK | CORE_C_BQ,
+        e: -1,
+        h: 0,
+        f: 1,
+        p: 0,
+        r: {},
+        k: "",
+        t: 0
+    };
+}
+
+function coreCloneGameNotes(notes) {
+    let source = notes || coreGetGameNotes();
+    let repetition = {};
+    let keys = Object.keys(source.r || {});
+    for (let i = 0; i < keys.length; i++) {
+        repetition[keys[i]] = source.r[keys[i]];
+    }
+
+    return {
+        c: source.c,
+        e: source.e,
+        h: source.h,
+        f: source.f,
+        p: source.p,
+        r: repetition,
+        k: source.k,
+        t: source.t
+    };
+}
+
+function coreSetGameNotes(notes) {
+    coreN = coreCloneGameNotes(notes);
+    return coreN;
+}
+
+function coreGetGameNotes() {
+    if (!coreN) {
+        coreN = coreCreateGameNotes();
+    }
+    return coreN;
+}
+
+function corePositionKey(boardState, sideToMovePlayer, notes) {
+    let n = notes || coreGetGameNotes();
+    let fen = coreBoardToFen(boardState, sideToMovePlayer, n);
+    let parts = fen.split(" ");
+    return parts[0] + " " + parts[1] + " " + parts[2] + " " + parts[3];
+}
+
+function coreRecordPosition(boardState, sideToMovePlayer, notes, resetRepetition) {
+    let n = notes || coreGetGameNotes();
+    if (resetRepetition) {
+        n.r = {};
+    }
+
+    let key = corePositionKey(boardState, sideToMovePlayer, n);
+    let currentCount = n.r[key] || 0;
+    n.r[key] = currentCount + 1;
+    n.k = key;
+    n.t = n.r[key] >= 3 ? 1 : 0;
+}
+
+function coreIsThreefold(notes) {
+    let n = notes || coreGetGameNotes();
+    return n.t == 1;
+}
+
+function coreCastleMask(player, side) {
+    if (player == 0) {
+        return side == "kingside" ? CORE_C_WK : CORE_C_WQ;
+    }
+
+    return side == "kingside" ? CORE_C_BK : CORE_C_BQ;
+}
+
+function coreRemoveCastleRightsBySquare(notes, squareIndex) {
+    if (!notes) {
+        return;
+    }
+
+    if (squareIndex == 0) {
+        notes.c &= ~CORE_C_WQ;
+    } else if (squareIndex == 7) {
+        notes.c &= ~CORE_C_WK;
+    } else if (squareIndex == 56) {
+        notes.c &= ~CORE_C_BQ;
+    } else if (squareIndex == 63) {
+        notes.c &= ~CORE_C_BK;
+    }
+}
+
 function boardSetup(){
     board = [];
     for (let i=0; i<64; i++) {
@@ -31,6 +132,9 @@ function boardSetup(){
             }
         }
     }
+
+    coreSetGameNotes(coreCreateGameNotes());
+    coreRecordPosition(board, 0, coreGetGameNotes(), true);
 }
 
 function inBoardBounds(x, y){
@@ -131,11 +235,15 @@ function isSquareAttackedBy(board, i, attackerPlayer) {
     return getSquareAttackerCount(board, 1-attackerPlayer, i) > 0;
 }
 
-function applyMoveInPlace(boardState, move) {
+function applyMoveInPlace(boardState, move, gameNotes) {
+    let notesState = gameNotes;
     let from = move.pieceIndex;
     let to = move.moveTo;
     let movingPieceType = boardState[from].pieceType;
     let movingPlayer = boardState[from].player;
+    let capturedPieceType = boardState[to].pieceType;
+    let capturedPlayer = boardState[to].player;
+    let moveDirection = 1-movingPlayer*2;
 
     boardState[to] = {
         pieceType: boardState[from].pieceType,
@@ -150,19 +258,65 @@ function applyMoveInPlace(boardState, move) {
     };
 
     if (movingPieceType == 5 || movingPieceType == 3) {
-        coreAddNote(boardState[to].notes, "hasMoved");
+        coreAddNote(boardState[to].notes, 1);
     }
 
     if (move.notes && move.notes[0] == "promote") {
         boardState[to].pieceType = move.notes[1];
     }
 
+    if (move.notes && move.notes[0] == "ep") {
+        let capturedPawnIndex = to - 8 * moveDirection;
+        capturedPieceType = boardState[capturedPawnIndex].pieceType;
+        capturedPlayer = boardState[capturedPawnIndex].player;
+        boardState[capturedPawnIndex] = {
+            pieceType: undefined,
+            player: undefined,
+            notes: []
+        };
+    }
+
     if (move.notes && move.notes[0] == "castle") {
         coreApplyCastleRookMove(boardState, movingPlayer, move.notes[1]);
     }
+
+    if (!notesState) {
+        return;
+    }
+
+    notesState.p += 1;
+    notesState.e = -1;
+
+    if (movingPieceType == 5) {
+        notesState.c &= movingPlayer == 0 ? ~(CORE_C_WK | CORE_C_WQ) : ~(CORE_C_BK | CORE_C_BQ);
+    }
+
+    if (movingPieceType == 3) {
+        coreRemoveCastleRightsBySquare(notesState, from);
+    }
+
+    if (capturedPieceType == 3 && capturedPlayer != undefined) {
+        coreRemoveCastleRightsBySquare(notesState, to);
+    }
+
+    if (movingPieceType == 0 && Math.abs(to - from) == 16) {
+        notesState.e = from + 8 * moveDirection;
+    }
+
+    if (movingPieceType == 0 || capturedPlayer != undefined) {
+        notesState.h = 0;
+    } else {
+        notesState.h += 1;
+    }
+
+    if (movingPlayer == 1) {
+        notesState.f += 1;
+    }
+
+    coreRecordPosition(boardState, 1-movingPlayer, notesState, false);
 }
 
-function applyMoveToBoardState(boardState, move) {
+function applyMoveToBoardState(boardState, move, gameNotes) {
     let newBoard = [];
     for (let i = 0; i < boardState.length; i++) {
         newBoard.push({
@@ -172,11 +326,12 @@ function applyMoveToBoardState(boardState, move) {
         });
     }
 
-    applyMoveInPlace(newBoard, move);
+    applyMoveInPlace(newBoard, move, gameNotes);
     return newBoard;
 }
 
-function getLegalMoves(board, player){
+function getLegalMoves(board, player, gameNotes){
+    let notesState = gameNotes || coreGetGameNotes();
     let bishopXM = (j)=>{return (j%2)*2-1};
     let bishopYM = (j)=>{return Math.floor(j/2)*2-1};
     let rookXM = (j)=>{return ((j%2)*2-1)*(Math.floor(j/2) == 0)};
@@ -205,7 +360,7 @@ function getLegalMoves(board, player){
         }
     }
 
-    coreAddCastlingMoves(board, player, kingIndex, legalMoves);
+    coreAddCastlingMoves(board, player, kingIndex, legalMoves, notesState);
 
     if (getSquareAttackerCount(board, player, kingIndex) < 2) {
         for (let i=0; i<board.length; i++) {
@@ -225,11 +380,21 @@ function getLegalMoves(board, player){
                     if (moveTo%8 != 7) {
                         if (board[moveTo+1].player == 1-player){
                             addPawnMoves(i, moveTo+1);
+                        } else if (notesState.e == moveTo+1) {
+                            let epCapturedIndex = moveTo+1-8*moveDirection;
+                            if (board[epCapturedIndex].player == 1-player && board[epCapturedIndex].pieceType == 0) {
+                                legalMoves.push({pieceIndex: i, moveTo: moveTo+1, notes: ["ep"]});
+                            }
                         }
                     }
                     if (moveTo%8 != 0) {
                         if (board[moveTo-1].player == 1-player) {
                             addPawnMoves(i, moveTo-1);
+                        } else if (notesState.e == moveTo-1) {
+                            let epCapturedIndex = moveTo-1-8*moveDirection;
+                            if (board[epCapturedIndex].player == 1-player && board[epCapturedIndex].pieceType == 0) {
+                                legalMoves.push({pieceIndex: i, moveTo: moveTo-1, notes: ["ep"]});
+                            }
                         }
                     }
                 } else if (pieceType == 1) { // knights
@@ -398,7 +563,8 @@ function coreNormalizeSanToken(token) {
     return normalized;
 }
 
-function coreCreateSanMoveText(move, boardBefore, player, legalMoves) {
+function coreCreateSanMoveText(move, boardBefore, player, legalMoves, gameNotes) {
+    let notesState = gameNotes || coreGetGameNotes();
     let pieceType = boardBefore[move.pieceIndex].pieceType;
     let toText = coreIndexToSquareText(move.moveTo);
     let fromX = move.pieceIndex % 8;
@@ -412,6 +578,9 @@ function coreCreateSanMoveText(move, boardBefore, player, legalMoves) {
         }
     } else {
         let capture = boardBefore[move.moveTo].player != undefined && boardBefore[move.moveTo].player != player;
+        if (move.notes && move.notes[0] == "ep") {
+            capture = true;
+        }
 
         if (pieceType == 0) {
             if (capture) {
@@ -432,11 +601,12 @@ function coreCreateSanMoveText(move, boardBefore, player, legalMoves) {
         }
     }
 
-    let boardAfter = applyMoveToBoardState(boardBefore, move);
+    let notesAfter = coreCloneGameNotes(notesState);
+    let boardAfter = applyMoveToBoardState(boardBefore, move, notesAfter);
     let opponent = 1 - player;
     let kingIndex = coreFindKingIndex(boardAfter, opponent);
     if (kingIndex != undefined && isSquareAttackedBy(boardAfter, kingIndex, player)) {
-        let opponentMoves = getLegalMoves(boardAfter, opponent);
+        let opponentMoves = getLegalMoves(boardAfter, opponent, notesAfter);
         if (opponentMoves.length == 0) {
             san += "#";
         } else {
@@ -447,10 +617,10 @@ function coreCreateSanMoveText(move, boardBefore, player, legalMoves) {
     return san;
 }
 
-function coreCreateMoveRecord(move, boardBefore, player, legalMoves) {
+function coreCreateMoveRecord(move, boardBefore, player, legalMoves, gameNotes) {
     return {
         coordinate: coreCreateCoordinateMoveToken(move),
-        san: coreCreateSanMoveText(move, boardBefore, player, legalMoves)
+        san: coreCreateSanMoveText(move, boardBefore, player, legalMoves, gameNotes)
     };
 }
 
@@ -495,7 +665,8 @@ function coreBuildPgnText(moves, startPlayer, result) {
     return parts.join(" ");
 }
 
-function coreBoardToFen(boardState, sideToMovePlayer) {
+function coreBoardToFen(boardState, sideToMovePlayer, gameNotes) {
+    let notesState = gameNotes || coreGetGameNotes();
     let rankParts = [];
 
     for (let y = 7; y >= 0; y--) {
@@ -528,10 +699,25 @@ function coreBoardToFen(boardState, sideToMovePlayer) {
     }
 
     let sideToMove = sideToMovePlayer == 0 ? "w" : "b";
-    // TODO: add castling rights to FEN when known
-    // TODO: add en passant target square to FEN when known
-    // TODO: add halfmove/fullmove counters to FEN when known
-    return rankParts.join("/") + " " + sideToMove + " - - 0 1";
+    let castling = "";
+    if ((notesState.c & CORE_C_WK) != 0) {
+        castling += "K";
+    }
+    if ((notesState.c & CORE_C_WQ) != 0) {
+        castling += "Q";
+    }
+    if ((notesState.c & CORE_C_BK) != 0) {
+        castling += "k";
+    }
+    if ((notesState.c & CORE_C_BQ) != 0) {
+        castling += "q";
+    }
+    if (castling.length == 0) {
+        castling = "-";
+    }
+
+    let enPassant = notesState.e >= 0 ? coreIndexToSquareText(notesState.e) : "-";
+    return rankParts.join("/") + " " + sideToMove + " " + castling + " " + enPassant + " " + notesState.h + " " + notesState.f;
 }
 
 function coreParseFenToState(fenText) {
@@ -591,12 +777,52 @@ function coreParseFenToState(fenText) {
         throw new Error("FEN side to move must be w or b.");
     }
 
-    // TODO: read castling rights from FEN when move rules support it
-    // TODO: read en passant target from FEN when move rules support it
-    // TODO: read halfmove/fullmove counters from FEN when move rules support it
+    let notesState = coreCreateGameNotes();
+    notesState.c = 0;
+
+    let castling = parts.length > 2 ? parts[2] : "-";
+    if (castling != "-") {
+        if (castling.indexOf("K") >= 0) {
+            notesState.c |= CORE_C_WK;
+        }
+        if (castling.indexOf("Q") >= 0) {
+            notesState.c |= CORE_C_WQ;
+        }
+        if (castling.indexOf("k") >= 0) {
+            notesState.c |= CORE_C_BK;
+        }
+        if (castling.indexOf("q") >= 0) {
+            notesState.c |= CORE_C_BQ;
+        }
+    }
+
+    let enPassant = parts.length > 3 ? parts[3] : "-";
+    if (enPassant == "-") {
+        notesState.e = -1;
+    } else {
+        notesState.e = coreParseSquareText(enPassant);
+        if (notesState.e == undefined) {
+            throw new Error("Invalid en passant square in FEN.");
+        }
+    }
+
+    notesState.h = parts.length > 4 ? parseInt(parts[4]) : 0;
+    if (isNaN(notesState.h) || notesState.h < 0) {
+        throw new Error("Invalid halfmove clock in FEN.");
+    }
+
+    notesState.f = parts.length > 5 ? parseInt(parts[5]) : 1;
+    if (isNaN(notesState.f) || notesState.f < 1) {
+        throw new Error("Invalid fullmove number in FEN.");
+    }
+
+    notesState.p = (notesState.f - 1) * 2 + (sideToMove == "b" ? 1 : 0);
+    coreRecordPosition(newBoard, sideToMove == "w" ? 0 : 1, notesState, true);
+
     return {
         board: newBoard,
-        whoseTurn: sideToMove == "w" ? 0 : 1
+        whoseTurn: sideToMove == "w" ? 0 : 1,
+        n: notesState
     };
 }
 
@@ -650,18 +876,19 @@ function coreParsePgnResult(pgnText) {
     return match[1];
 }
 
-function coreParseTokenToMove(token, player, boardState) {
+function coreParseTokenToMove(token, player, boardState, gameNotes) {
+    let notesState = gameNotes || coreGetGameNotes();
     let cleaned = token.trim();
     if (cleaned.length == 0) {
         return undefined;
     }
 
     cleaned = cleaned.replace(/0/g, "O");
-    let legalMoves = getLegalMoves(boardState, player);
+    let legalMoves = getLegalMoves(boardState, player, notesState);
 
     let sanToken = coreNormalizeSanToken(cleaned);
     for (let i = 0; i < legalMoves.length; i++) {
-        let san = coreCreateSanMoveText(legalMoves[i], boardState, player, legalMoves);
+        let san = coreCreateSanMoveText(legalMoves[i], boardState, player, legalMoves, notesState);
         if (coreNormalizeSanToken(san) == sanToken) {
             return legalMoves[i];
         }
@@ -736,7 +963,8 @@ function coreHasNote(notes, note) {
     return false;
 }
 
-function coreCanCastle(boardState, player, kingIndex, side) {
+function coreCanCastle(boardState, player, kingIndex, side, notesState) {
+    let n = notesState || coreGetGameNotes();
     let homeRank = player == 0 ? 0 : 7;
     let expectedKingIndex = homeRank * 8 + 4;
     if (kingIndex != expectedKingIndex) {
@@ -748,7 +976,7 @@ function coreCanCastle(boardState, player, kingIndex, side) {
         return false;
     }
 
-    if (coreHasNote(kingPiece.notes, "hasMoved")) {
+    if ((n.c & coreCastleMask(player, side)) == 0) {
         return false;
     }
 
@@ -760,10 +988,6 @@ function coreCanCastle(boardState, player, kingIndex, side) {
     let rookIndex = homeRank * 8 + rookFile;
     let rookPiece = boardState[rookIndex];
     if (!rookPiece || rookPiece.pieceType != 3 || rookPiece.player != player) {
-        return false;
-    }
-
-    if (coreHasNote(rookPiece.notes, "hasMoved")) {
         return false;
     }
 
@@ -787,10 +1011,10 @@ function coreCanCastle(boardState, player, kingIndex, side) {
     return true;
 }
 
-function coreAddCastlingMoves(boardState, player, kingIndex, legalMoves) {
+function coreAddCastlingMoves(boardState, player, kingIndex, legalMoves, notesState) {
     let homeRank = player == 0 ? 0 : 7;
 
-    if (coreCanCastle(boardState, player, kingIndex, "kingside")) {
+    if (coreCanCastle(boardState, player, kingIndex, "kingside", notesState)) {
         legalMoves.push({
             pieceIndex: kingIndex,
             moveTo: homeRank * 8 + 6,
@@ -798,7 +1022,7 @@ function coreAddCastlingMoves(boardState, player, kingIndex, legalMoves) {
         });
     }
 
-    if (coreCanCastle(boardState, player, kingIndex, "queenside")) {
+    if (coreCanCastle(boardState, player, kingIndex, "queenside", notesState)) {
         legalMoves.push({
             pieceIndex: kingIndex,
             moveTo: homeRank * 8 + 2,
@@ -819,7 +1043,7 @@ function coreApplyCastleRookMove(boardState, player, side) {
         player: boardState[rookFromIndex].player,
         notes: (boardState[rookFromIndex].notes || []).slice()
     };
-    coreAddNote(boardState[rookToIndex].notes, "hasMoved");
+    coreAddNote(boardState[rookToIndex].notes, 1);
 
     boardState[rookFromIndex] = {
         pieceType: undefined,

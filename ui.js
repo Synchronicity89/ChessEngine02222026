@@ -68,7 +68,8 @@ function pushCurrentPosition(moveToken) {
     moveHistory.push(moveToken);
     positionHistory.push({
         board: coreCloneBoardState(board),
-        whoseTurn: whoseTurn
+        whoseTurn: whoseTurn,
+        n: coreCloneGameNotes(coreGetGameNotes())
     });
     currentPly = positionHistory.length - 1;
     updateNotationUI();
@@ -77,7 +78,8 @@ function pushCurrentPosition(moveToken) {
 function setHistoryToCurrentPosition() {
     positionHistory = [{
         board: coreCloneBoardState(board),
-        whoseTurn: whoseTurn
+        whoseTurn: whoseTurn,
+        n: coreCloneGameNotes(coreGetGameNotes())
     }];
     moveHistory = [];
     currentPly = 0;
@@ -142,6 +144,9 @@ function goToPly(targetPly) {
     let snapshot = positionHistory[clamped];
     board = coreCloneBoardState(snapshot.board);
     whoseTurn = snapshot.whoseTurn;
+    if (snapshot.n) {
+        coreSetGameNotes(snapshot.n);
+    }
     currentPly = clamped;
     clearSelection();
     hidePromotionChooser();
@@ -304,13 +309,17 @@ function findPromotionMoveByPieceType(pieceType) {
 function completeHumanMove(chosenMove) {
     let boardBefore = coreCloneBoardState(board);
     let legalMoves = getMovesForPlayer(humanPlayer);
-    let moveRecord = coreCreateMoveRecord(chosenMove, boardBefore, humanPlayer, legalMoves);
+    let moveRecord = coreCreateMoveRecord(chosenMove, boardBefore, humanPlayer, legalMoves, coreGetGameNotes());
     makeMove(chosenMove);
     clearSelection();
     hidePromotionChooser();
     whoseTurn = enginePlayer;
     pushCurrentPosition(moveRecord);
-    statusText.textContent = "Engine thinking...";
+    if (coreIsThreefold(coreGetGameNotes())) {
+        statusText.textContent = "Threefold repetition detected. Engine thinking...";
+    } else {
+        statusText.textContent = "Engine thinking...";
+    }
     drawBoard();
     setTimeout(engineTurn, 150);
 }
@@ -413,7 +422,7 @@ function drawBoard() {
 
 function getMovesForPlayer(player) {
     try {
-        return getLegalMoves(board, player);
+        return getLegalMoves(board, player, coreGetGameNotes());
     } catch (err) {
         statusText.textContent = "Move generation error from code.js: " + err.message;
         return [];
@@ -421,7 +430,7 @@ function getMovesForPlayer(player) {
 }
 
 function makeMove(move) {
-    applyMoveInPlace(board, move);
+    applyMoveInPlace(board, move, coreGetGameNotes());
 }
 
 function resetGame() {
@@ -478,11 +487,15 @@ function engineTurn() {
 
     let boardBefore = coreCloneBoardState(board);
     let legalMoves = getMovesForPlayer(enginePlayer);
-    let moveRecord = coreCreateMoveRecord(engineMove, boardBefore, enginePlayer, legalMoves);
+    let moveRecord = coreCreateMoveRecord(engineMove, boardBefore, enginePlayer, legalMoves, coreGetGameNotes());
     makeMove(engineMove);
     whoseTurn = humanPlayer;
     pushCurrentPosition(moveRecord);
-    statusText.textContent = "Your turn.";
+    if (coreIsThreefold(coreGetGameNotes())) {
+        statusText.textContent = "Threefold repetition detected. Your turn.";
+    } else {
+        statusText.textContent = "Your turn.";
+    }
     drawBoard();
 }
 
@@ -577,6 +590,9 @@ loadFenButton.addEventListener("click", function () {
         let state = coreParseFenToState(fenTextInput.value);
         board = state.board;
         whoseTurn = state.whoseTurn;
+        if (state.n) {
+            coreSetGameNotes(state.n);
+        }
         clearSelection();
         hidePromotionChooser();
         setHistoryToCurrentPosition();
@@ -607,14 +623,14 @@ loadPgnButton.addEventListener("click", function () {
         gameResult = parsedResult;
 
         for (let i = 0; i < tokens.length; i++) {
-            let move = coreParseTokenToMove(tokens[i], whoseTurn, board);
+            let move = coreParseTokenToMove(tokens[i], whoseTurn, board, coreGetGameNotes());
             if (!move) {
                 throw new Error("Could not apply token: " + tokens[i]);
             }
 
             let boardBefore = coreCloneBoardState(board);
             let legalMoves = getMovesForPlayer(whoseTurn);
-            let moveRecord = coreCreateMoveRecord(move, boardBefore, whoseTurn, legalMoves);
+            let moveRecord = coreCreateMoveRecord(move, boardBefore, whoseTurn, legalMoves, coreGetGameNotes());
             makeMove(move);
             whoseTurn = 1 - whoseTurn;
             pushCurrentPosition(moveRecord);

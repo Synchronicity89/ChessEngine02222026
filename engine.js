@@ -15,17 +15,28 @@ function scorePosition(board){
 }
 
 function getBestMove(board, player, plies){
-    let positionTree = {board: board, player: player, pliesLeft: plies, score: undefined, branches: [], bestMoveIndex: undefined, moveDone: undefined};
+    let positionTree = {
+        board: board,
+        n: coreCloneGameNotes(coreGetGameNotes()),
+        player: player,
+        pliesLeft: plies,
+        score: undefined,
+        branches: [],
+        bestMoveIndex: undefined,
+        moveDone: undefined
+    };
     branchPositionTree(positionTree);
     scorePositionTree(positionTree);
     return positionTree.branches[positionTree.bestMoveIndex].moveDone;
 }
 
 function branchPositionTree(positionTree){
-    let legalMoves = getLegalMoves(positionTree.board, positionTree.player);
+    let legalMoves = getLegalMoves(positionTree.board, positionTree.player, positionTree.n);
     for (let i=0; i<legalMoves.length; i++) {
+        let newNotes = coreCloneGameNotes(positionTree.n);
         let newBranch = {
-            board: applyMoveToBoardState(positionTree.board, legalMoves[i]),
+            board: applyMoveToBoardState(positionTree.board, legalMoves[i], newNotes),
+            n: newNotes,
             player: 1-positionTree.player,
             pliesLeft: positionTree.pliesLeft-1,
             score: undefined,
