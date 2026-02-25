@@ -134,11 +134,13 @@ function isSquareAttackedBy(board, i, attackerPlayer) {
 function applyMoveInPlace(boardState, move) {
     let from = move.pieceIndex;
     let to = move.moveTo;
+    let movingPieceType = boardState[from].pieceType;
+    let movingPlayer = boardState[from].player;
 
     boardState[to] = {
         pieceType: boardState[from].pieceType,
         player: boardState[from].player,
-        notes: boardState[from].notes || []
+        notes: (boardState[from].notes || []).slice()
     };
 
     boardState[from] = {
@@ -147,8 +149,16 @@ function applyMoveInPlace(boardState, move) {
         notes: []
     };
 
+    if (movingPieceType == 5 || movingPieceType == 3) {
+        coreAddNote(boardState[to].notes, "hasMoved");
+    }
+
     if (move.notes && move.notes[0] == "promote") {
         boardState[to].pieceType = move.notes[1];
+    }
+
+    if (move.notes && move.notes[0] == "castle") {
+        coreApplyCastleRookMove(boardState, movingPlayer, move.notes[1]);
     }
 }
 
@@ -194,6 +204,9 @@ function getLegalMoves(board, player){
             }
         }
     }
+
+    coreAddCastlingMoves(board, player, kingIndex, legalMoves);
+
     if (getSquareAttackerCount(board, player, kingIndex) < 2) {
         for (let i=0; i<board.length; i++) {
             if (board[i].player == player) {
@@ -390,26 +403,33 @@ function coreCreateSanMoveText(move, boardBefore, player, legalMoves) {
     let toText = coreIndexToSquareText(move.moveTo);
     let fromX = move.pieceIndex % 8;
 
-    // TODO: use O-O / O-O-O when castling moves are represented by move generation
     let san = "";
-    let capture = boardBefore[move.moveTo].player != undefined && boardBefore[move.moveTo].player != player;
-
-    if (pieceType == 0) {
-        if (capture) {
-            san += String.fromCharCode(97 + fromX) + "x";
+    if (move.notes && move.notes[0] == "castle") {
+        if (move.notes[1] == "kingside") {
+            san = "O-O";
+        } else {
+            san = "O-O-O";
         }
-        san += toText;
     } else {
-        san += corePieceTypeToSanLetter[pieceType] || "";
-        san += coreGetMoveDisambiguation(move, legalMoves, boardBefore);
-        if (capture) {
-            san += "x";
-        }
-        san += toText;
-    }
+        let capture = boardBefore[move.moveTo].player != undefined && boardBefore[move.moveTo].player != player;
 
-    if (move.notes && move.notes[0] == "promote") {
-        san += "=" + (corePieceTypeToSanLetter[move.notes[1]] || "Q");
+        if (pieceType == 0) {
+            if (capture) {
+                san += String.fromCharCode(97 + fromX) + "x";
+            }
+            san += toText;
+        } else {
+            san += corePieceTypeToSanLetter[pieceType] || "";
+            san += coreGetMoveDisambiguation(move, legalMoves, boardBefore);
+            if (capture) {
+                san += "x";
+            }
+            san += toText;
+        }
+
+        if (move.notes && move.notes[0] == "promote") {
+            san += "=" + (corePieceTypeToSanLetter[move.notes[1]] || "Q");
+        }
     }
 
     let boardAfter = applyMoveToBoardState(boardBefore, move);
@@ -686,4 +706,124 @@ function coreParseTokenToMove(token, player, boardState) {
 
 function coreGetMoveTextForDisplay(moveRecord) {
     return moveRecord.san || moveRecord.coordinate || "";
+}
+
+function coreAddNote(notes, note) {
+    if (!notes) {
+        return;
+    }
+
+    for (let i = 0; i < notes.length; i++) {
+        if (notes[i] == note) {
+            return;
+        }
+    }
+
+    notes.push(note);
+}
+
+function coreHasNote(notes, note) {
+    if (!notes) {
+        return false;
+    }
+
+    for (let i = 0; i < notes.length; i++) {
+        if (notes[i] == note) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function coreCanCastle(boardState, player, kingIndex, side) {
+    let homeRank = player == 0 ? 0 : 7;
+    let expectedKingIndex = homeRank * 8 + 4;
+    if (kingIndex != expectedKingIndex) {
+        return false;
+    }
+
+    let kingPiece = boardState[kingIndex];
+    if (!kingPiece || kingPiece.pieceType != 5 || kingPiece.player != player) {
+        return false;
+    }
+
+    if (coreHasNote(kingPiece.notes, "hasMoved")) {
+        return false;
+    }
+
+    if (getSquareAttackerCount(boardState, player, kingIndex) != 0) {
+        return false;
+    }
+
+    let rookFile = side == "kingside" ? 7 : 0;
+    let rookIndex = homeRank * 8 + rookFile;
+    let rookPiece = boardState[rookIndex];
+    if (!rookPiece || rookPiece.pieceType != 3 || rookPiece.player != player) {
+        return false;
+    }
+
+    if (coreHasNote(rookPiece.notes, "hasMoved")) {
+        return false;
+    }
+
+    let step = side == "kingside" ? 1 : -1;
+    for (let file = 4 + step; file != rookFile; file += step) {
+        let betweenIndex = homeRank * 8 + file;
+        if (boardState[betweenIndex].player != undefined) {
+            return false;
+        }
+    }
+
+    let kingPath1 = homeRank * 8 + (4 + step);
+    let kingPath2 = homeRank * 8 + (4 + step * 2);
+    if (getSquareAttackerCount(boardState, player, kingPath1) != 0) {
+        return false;
+    }
+    if (getSquareAttackerCount(boardState, player, kingPath2) != 0) {
+        return false;
+    }
+
+    return true;
+}
+
+function coreAddCastlingMoves(boardState, player, kingIndex, legalMoves) {
+    let homeRank = player == 0 ? 0 : 7;
+
+    if (coreCanCastle(boardState, player, kingIndex, "kingside")) {
+        legalMoves.push({
+            pieceIndex: kingIndex,
+            moveTo: homeRank * 8 + 6,
+            notes: ["castle", "kingside"]
+        });
+    }
+
+    if (coreCanCastle(boardState, player, kingIndex, "queenside")) {
+        legalMoves.push({
+            pieceIndex: kingIndex,
+            moveTo: homeRank * 8 + 2,
+            notes: ["castle", "queenside"]
+        });
+    }
+}
+
+function coreApplyCastleRookMove(boardState, player, side) {
+    let homeRank = player == 0 ? 0 : 7;
+    let rookFromFile = side == "kingside" ? 7 : 0;
+    let rookToFile = side == "kingside" ? 5 : 3;
+    let rookFromIndex = homeRank * 8 + rookFromFile;
+    let rookToIndex = homeRank * 8 + rookToFile;
+
+    boardState[rookToIndex] = {
+        pieceType: boardState[rookFromIndex].pieceType,
+        player: boardState[rookFromIndex].player,
+        notes: (boardState[rookFromIndex].notes || []).slice()
+    };
+    coreAddNote(boardState[rookToIndex].notes, "hasMoved");
+
+    boardState[rookFromIndex] = {
+        pieceType: undefined,
+        player: undefined,
+        notes: []
+    };
 }
