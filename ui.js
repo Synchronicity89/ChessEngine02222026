@@ -15,6 +15,7 @@ let promotionButtons = promotionChooser.querySelectorAll("button[data-piece-type
 let fenTextInput = document.getElementById("fenText");
 let copyFenButton = document.getElementById("copyFen");
 let loadFenButton = document.getElementById("loadFen");
+let forceEngineMoveButton = document.getElementById("forceEngineMove");
 let pgnTextInput = document.getElementById("pgnText");
 let copyPgnButton = document.getElementById("copyPgn");
 let loadPgnButton = document.getElementById("loadPgn");
@@ -499,6 +500,39 @@ function engineTurn() {
     drawBoard();
 }
 
+function forceEngineMoveFromCurrentPosition() {
+    if (isViewingHistory()) {
+        statusText.textContent = "Use >| to return to the latest move before forcing an engine move.";
+        return;
+    }
+
+    clearSelection();
+    hidePromotionChooser();
+
+    let movingPlayer = whoseTurn;
+    let engineMove = getBestMove(board, movingPlayer, 4);
+    if (!engineMove) {
+        statusText.textContent = "No legal moves for " + getSideName(movingPlayer) + ".";
+        drawBoard();
+        return;
+    }
+
+    let boardBefore = coreCloneBoardState(board);
+    let legalMoves = getMovesForPlayer(movingPlayer);
+    let moveRecord = coreCreateMoveRecord(engineMove, boardBefore, movingPlayer, legalMoves, coreGetGameNotes());
+    makeMove(engineMove);
+    whoseTurn = 1 - movingPlayer;
+    pushCurrentPosition(moveRecord);
+
+    if (coreIsThreefold(coreGetGameNotes())) {
+        statusText.textContent = "Threefold repetition detected.";
+    } else {
+        statusText.textContent = "Engine played for " + getSideName(movingPlayer) + ".";
+    }
+
+    drawBoard();
+}
+
 canvas.addEventListener("click", function (event) {
     if (isViewingHistory()) {
         statusText.textContent = "Use >| to return to the latest move before playing.";
@@ -602,6 +636,12 @@ loadFenButton.addEventListener("click", function () {
         statusText.textContent = "FEN load error: " + err.message;
     }
 });
+
+if (forceEngineMoveButton) {
+    forceEngineMoveButton.addEventListener("click", function () {
+        forceEngineMoveFromCurrentPosition();
+    });
+}
 
 copyPgnButton.addEventListener("click", function () {
     let pgnText = coreBuildPgnText(moveHistory, gameStartPlayer, gameResult);
