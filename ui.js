@@ -59,6 +59,17 @@ let pieceSymbols = {
     5: ["♔", "♚"]
 };
 
+let pieceImageFileMap = {
+    0: "P",
+    1: "N",
+    2: "B",
+    3: "R",
+    4: "Q",
+    5: "K"
+};
+
+let pieceImages = {};
+
 function isViewingHistory() {
     return currentPly != positionHistory.length - 1;
 }
@@ -264,6 +275,23 @@ function updateViewInfo() {
     viewInfo.textContent = "You: " + getSideName(humanPlayer) + " | Bottom: " + getSideName(bottomPlayer);
 }
 
+function loadPieceImages() {
+    for (let player = 0; player <= 1; player++) {
+        for (let pieceType = 0; pieceType <= 5; pieceType++) {
+            let pieceCode = pieceImageFileMap[pieceType];
+            let colorCode = player == 0 ? "w" : "b";
+            let key = player + "_" + pieceType;
+            let img = new Image();
+            img.src = "public/piece/cburnett/" + colorCode + pieceCode + ".svg";
+            pieceImages[key] = img;
+        }
+    }
+}
+
+function getPieceImage(player, pieceType) {
+    return pieceImages[player + "_" + pieceType];
+}
+
 function drawCoordinates() {
     ctx.font = "12px sans-serif";
     ctx.textAlign = "left";
@@ -442,10 +470,6 @@ function drawBoard() {
         ctx.fill();
     }
 
-    ctx.font = "40px serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
     for (let i = 0; i < board.length; i++) {
         let cell = board[i];
         if (cell.player == undefined || cell.pieceType == undefined) {
@@ -453,8 +477,25 @@ function drawBoard() {
         }
 
         let displayPos = boardIndexToDisplay(i);
+        let image = getPieceImage(cell.player, cell.pieceType);
+
+        if (image && image.complete && image.naturalWidth > 0) {
+            let margin = squareSize * 0.08;
+            ctx.drawImage(
+                image,
+                displayPos.x * squareSize + margin,
+                displayPos.y * squareSize + margin,
+                squareSize - margin * 2,
+                squareSize - margin * 2
+            );
+            continue;
+        }
+
         let symbol = pieceSymbols[cell.pieceType][cell.player];
 
+        ctx.font = "40px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillStyle = cell.player == 0 ? "#111" : "#000";
         ctx.fillText(symbol, displayPos.x * squareSize + squareSize / 2, displayPos.y * squareSize + squareSize / 2 + 2);
     }
@@ -798,4 +839,5 @@ document.addEventListener("keyup", function (event) {
     }
 });
 
+loadPieceImages();
 resetGame();
