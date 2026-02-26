@@ -10,6 +10,7 @@ let viewInfo = document.getElementById("viewInfo");
 let defaultPromotionPieceSelect = document.getElementById("defaultPromotionPiece");
 let useDefaultPromotionCheckbox = document.getElementById("useDefaultPromotion");
 let promotionBypassKeyInput = document.getElementById("promotionBypassKey");
+let enginePlyDepthInput = document.getElementById("enginePlyDepth");
 let promotionChooser = document.getElementById("promotionChooser");
 let promotionButtons = promotionChooser.querySelectorAll("button[data-piece-type]");
 let fenTextInput = document.getElementById("fenText");
@@ -39,6 +40,7 @@ let moveHistory = [];
 let currentPly = 0;
 let gameStartPlayer = 0;
 let gameResult = "*";
+let engineSearchPly = 4;
 
 let boardViewStates = {
     whiteBottom: "whiteBottom",
@@ -215,6 +217,27 @@ function isLightSquare(x, y) {
 
 function getSideName(player) {
     return player == 0 ? "White" : "Black";
+}
+
+function clampEnginePly(value) {
+    if (isNaN(value)) {
+        return 4;
+    }
+
+    return Math.max(1, Math.min(8, Math.floor(value)));
+}
+
+function applyEnginePlyInputValue(showStatus) {
+    if (!enginePlyDepthInput) {
+        return;
+    }
+
+    engineSearchPly = clampEnginePly(parseInt(enginePlyDepthInput.value));
+    enginePlyDepthInput.value = String(engineSearchPly);
+
+    if (showStatus) {
+        statusText.textContent = "Engine ply depth set to " + engineSearchPly + ".";
+    }
 }
 
 function updateViewInfo() {
@@ -458,7 +481,7 @@ function clearSelection() {
 }
 
 function pickEngineMove(){
-    return getBestMove(board, enginePlayer, 4);
+    return getBestMove(board, enginePlayer, engineSearchPly);
 }
 
 function pickRandomEngineMove() {
@@ -510,7 +533,7 @@ function forceEngineMoveFromCurrentPosition() {
     hidePromotionChooser();
 
     let movingPlayer = whoseTurn;
-    let engineMove = getBestMove(board, movingPlayer, 4);
+    let engineMove = getBestMove(board, movingPlayer, engineSearchPly);
     if (!engineMove) {
         statusText.textContent = "No legal moves for " + getSideName(movingPlayer) + ".";
         drawBoard();
@@ -640,6 +663,14 @@ loadFenButton.addEventListener("click", function () {
 if (forceEngineMoveButton) {
     forceEngineMoveButton.addEventListener("click", function () {
         forceEngineMoveFromCurrentPosition();
+    });
+}
+
+if (enginePlyDepthInput) {
+    applyEnginePlyInputValue(false);
+
+    enginePlyDepthInput.addEventListener("change", function () {
+        applyEnginePlyInputValue(true);
     });
 }
 
