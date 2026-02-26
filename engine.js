@@ -3,6 +3,50 @@
 
 let playerToPosNeg = [1, -1];
 
+let whiteMinorStartSquares = [1, 2, 5, 6];
+let blackMinorStartSquares = [57, 58, 61, 62];
+let whiteMinorCenterSquares = [18, 19, 20, 21];
+let blackMinorCenterSquares = [42, 43, 44, 45];
+
+function scoreDevelopment(board) {
+    let score = 0;
+
+    for (let i = 0; i < board.length; i++) {
+        let square = board[i];
+        if (square.player == undefined || square.pieceType == undefined) {
+            continue;
+        }
+
+        if (square.pieceType == 1 || square.pieceType == 2) {
+            if (square.player == 0) {
+                if (whiteMinorStartSquares.indexOf(i) == -1) {
+                    score += 120;
+                }
+                if (whiteMinorCenterSquares.indexOf(i) >= 0) {
+                    score += 60;
+                }
+            } else {
+                if (blackMinorStartSquares.indexOf(i) == -1) {
+                    score -= 120;
+                }
+                if (blackMinorCenterSquares.indexOf(i) >= 0) {
+                    score -= 60;
+                }
+            }
+        }
+
+        if (square.pieceType == 5) {
+            if (square.player == 0 && (i == 6 || i == 2)) {
+                score += 90;
+            } else if (square.player == 1 && (i == 62 || i == 58)) {
+                score -= 90;
+            }
+        }
+    }
+
+    return score;
+}
+
 function scorePosition(board, player, gameNotes){
     let score = 0;
     for (let i=0; i<board.length; i++) {
@@ -11,8 +55,7 @@ function scorePosition(board, player, gameNotes){
             score += pieceTypes[square.pieceType].value*playerToPosNeg[square.player];
         }
     }
-    score += getLegalMoves(board, 0, gameNotes).length;
-    score -= getLegalMoves(board, 1, gameNotes).length;
+    score += scoreDevelopment(board);
     return score;
 }
 
