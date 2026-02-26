@@ -69,6 +69,7 @@ let pieceImageFileMap = {
 };
 
 let pieceImages = {};
+let pendingPieceImageLoads = 0;
 
 function isViewingHistory() {
     return currentPly != positionHistory.length - 1;
@@ -276,13 +277,26 @@ function updateViewInfo() {
 }
 
 function loadPieceImages() {
+    pendingPieceImageLoads = 0;
+
     for (let player = 0; player <= 1; player++) {
         for (let pieceType = 0; pieceType <= 5; pieceType++) {
             let pieceCode = pieceImageFileMap[pieceType];
             let colorCode = player == 0 ? "w" : "b";
             let key = player + "_" + pieceType;
             let img = new Image();
-            img.src = "public/piece/cburnett/" + colorCode + pieceCode + ".svg";
+            pendingPieceImageLoads ++;
+
+            img.addEventListener("load", function () {
+                pendingPieceImageLoads --;
+                drawBoard();
+            });
+
+            img.addEventListener("error", function () {
+                pendingPieceImageLoads --;
+            });
+
+            img.src = "./public/piece/cburnett/" + colorCode + pieceCode + ".svg";
             pieceImages[key] = img;
         }
     }
