@@ -3,7 +3,7 @@
 
 let playerToPosNeg = [1, -1];
 
-function scorePosition(board){
+function scorePosition(board, player, gameNotes){
     let score = 0;
     for (let i=0; i<board.length; i++) {
         let square = board[i];
@@ -11,6 +11,8 @@ function scorePosition(board){
             score += pieceTypes[square.pieceType].value*playerToPosNeg[square.player];
         }
     }
+    score += getLegalMoves(board, 0, gameNotes).length;
+    score -= getLegalMoves(board, 1, gameNotes).length;
     return score;
 }
 
@@ -45,12 +47,12 @@ function orderMoves(board, legalMoves){
 
 function scorePositionTree(board, player, pliesLeft, gameNotes, alpha, beta){
     if (pliesLeft <= 0) {
-        return scorePosition(board);
+        return scorePosition(board, player, gameNotes);
     }
 
     let legalMoves = getLegalMoves(board, player, gameNotes);
     if (legalMoves.length == 0) {
-        return scorePosition(board);
+        return scorePosition(board, player, gameNotes);
     }
 
     let orderedMoves = orderMoves(board, legalMoves);
@@ -116,7 +118,7 @@ function getBestMove(board, player, plies){
         if (searchDepth > 0) {
             score = scorePositionTree(nextBoard, 1-player, searchDepth, newNotes, alpha, beta);
         } else {
-            score = scorePosition(nextBoard);
+            score = scorePosition(nextBoard, 1-player, newNotes);
         }
 
         if ((player == 0 && score > bestScore) || (player == 1 && score < bestScore)) {

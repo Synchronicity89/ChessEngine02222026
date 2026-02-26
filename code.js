@@ -1,12 +1,12 @@
 // GitHub version
 
 let pieceTypes = [
-    {name: "pawn", value: 1}, // 0
-    {name: "knight", value: 3}, // 1
-    {name: "bishop", value: 3}, // 2
-    {name: "rook", value: 5}, // 3
-    {name: "queen", value: 9}, // 4
-    {name: "king", value: 1000000} // 5
+    {name: "pawn", value: 1000}, // 0
+    {name: "knight", value: 3000}, // 1
+    {name: "bishop", value: 3000}, // 2
+    {name: "rook", value: 5000}, // 3
+    {name: "queen", value: 9000}, // 4
+    {name: "king", value: 10000000} // 5
 ];
 
 let standardStartingPositionSide = [3, 1, 2, 4, 5, 2, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0];
