@@ -3,95 +3,246 @@
     <head>
         <meta charset="utf-8">
         <title>Chess Engine Test UI</title>
+        <style>
+            body {
+                margin: 0;
+                font-family: Arial, Helvetica, sans-serif;
+                background: #f4f4f2;
+                color: #222;
+            }
+
+            .app {
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 16px;
+            }
+
+            h3 {
+                margin: 0 0 10px;
+                font-size: 22px;
+            }
+
+            #status {
+                margin: 0 0 12px;
+                background: #fff;
+                border: 1px solid #d8d8d8;
+                border-radius: 6px;
+                padding: 10px 12px;
+            }
+
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            button,
+            select,
+            input,
+            textarea {
+                font: inherit;
+            }
+
+            button {
+                border: 1px solid #c8c8c8;
+                border-radius: 6px;
+                background: #fff;
+                padding: 6px 10px;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background: #f0f0f0;
+            }
+
+            .card {
+                background: #fff;
+                border: 1px solid #d8d8d8;
+                border-radius: 8px;
+                padding: 10px;
+                margin-bottom: 12px;
+            }
+
+            details > summary {
+                cursor: pointer;
+                font-weight: 600;
+            }
+
+            .settings-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+            }
+
+            .board-row {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            #board {
+                border: 1px solid #a8a8a8;
+                border-radius: 4px;
+                background: #fff;
+            }
+
+            .moves-panel {
+                width: 220px;
+            }
+
+            .moves-header {
+                display: flex;
+                gap: 8px;
+                font-weight: bold;
+            }
+
+            .moves-header > div {
+                width: 100px;
+            }
+
+            #plyList {
+                max-height: 460px;
+                overflow: auto;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                padding: 6px;
+                margin-top: 6px;
+                background: #fafafa;
+            }
+
+            #promotionChooser {
+                margin-bottom: 12px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: #fff;
+                border: 1px solid #d8d8d8;
+                border-radius: 8px;
+                padding: 8px 10px;
+            }
+
+            .notation-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                margin-top: 8px;
+            }
+
+            #fenText {
+                width: 100%;
+                max-width: 560px;
+            }
+
+            #pgnText {
+                width: min(100%, 780px);
+                box-sizing: border-box;
+            }
+        </style>
     </head>
     <body>
-        <h3>Chess Engine Test UI</h3>
-        <p id="status">Click a piece, then click a highlighted square.</p>
-        <div>
-            <span>Play as:</span>
-            <button id="playWhite" type="button">White</button>
-            <button id="playRandom" type="button">Random Side</button>
-            <button id="playBlack" type="button">Black</button>
-            <button id="flipBoard" type="button">Flip Board</button>
-            <span id="viewInfo"></span>
-        </div>
-        <details>
-            <summary>Settings</summary>
-            <div>
-                <label for="defaultPromotionPiece">Default promotion piece:</label>
-                <select id="defaultPromotionPiece">
-                    <option value="4" selected>Queen</option>
-                    <option value="3">Rook</option>
-                    <option value="2">Bishop</option>
-                    <option value="1">Knight</option>
-                </select>
+        <div class="app">
+            <h3>Chess Engine Test UI</h3>
+            <p id="status">Click a piece, then click a highlighted square.</p>
+
+            <div class="toolbar">
+                <span>Play as:</span>
+                <button id="playWhite" type="button">White</button>
+                <button id="playRandom" type="button">Random Side</button>
+                <button id="playBlack" type="button">Black</button>
+                <button id="flipBoard" type="button">Flip Board</button>
+                <button id="resetGame" type="button">Reset Game</button>
+                <span id="viewInfo"></span>
             </div>
-            <div>
-                <label>
-                    <input id="useDefaultPromotion" type="checkbox" checked>
-                    Use default promotion piece
-                </label>
-            </div>
-            <div>
-                <label for="promotionBypassKey">Manual promotion key:</label>
-                <input id="promotionBypassKey" type="text" value="Control">
-            </div>
-            <div>
-                <label for="enginePlyDepth">Engine ply depth:</label>
-                <input id="enginePlyDepth" type="number" min="1" max="8" step="1" value="4">
-            </div>
-            <div>
-                <label for="developerBiasMode">Developer bias mode:</label>
-                <select id="developerBiasMode">
-                    <option value="optimizedFast" selected>Optimized (fast)</option>
-                    <option value="upstreamSlow">Upstream mobility (slow)</option>
-                </select>
-            </div>
-        </details>
-        <button id="resetGame" type="button">Reset Game</button>
-        <div style="display:flex; align-items:flex-start; gap:12px;">
-            <canvas id="board" width="480" height="480"></canvas>
-            <div style="width:220px;">
-                <div><strong>Moves</strong></div>
-                <div style="display:flex; gap:8px; font-weight:bold;">
-                    <div style="width:100px;">White</div>
-                    <div style="width:100px;">Black</div>
+
+            <details class="card">
+                <summary>Settings</summary>
+                <div class="settings-grid">
+                    <div>
+                        <label for="defaultPromotionPiece">Default promotion piece:</label>
+                        <select id="defaultPromotionPiece">
+                            <option value="4" selected>Queen</option>
+                            <option value="3">Rook</option>
+                            <option value="2">Bishop</option>
+                            <option value="1">Knight</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>
+                            <input id="useDefaultPromotion" type="checkbox" checked>
+                            Use default promotion piece
+                        </label>
+                    </div>
+                    <div>
+                        <label for="promotionBypassKey">Manual promotion key:</label>
+                        <input id="promotionBypassKey" type="text" value="Control">
+                    </div>
+                    <div>
+                        <label for="enginePlyDepth">Engine ply depth:</label>
+                        <input id="enginePlyDepth" type="number" min="1" max="8" step="1" value="4">
+                    </div>
+                    <div>
+                        <label for="developerBiasMode">Developer bias mode:</label>
+                        <select id="developerBiasMode">
+                            <option value="optimizedFast" selected>Optimized (fast)</option>
+                            <option value="upstreamSlow">Upstream mobility (slow)</option>
+                        </select>
+                    </div>
                 </div>
-                <div id="plyList" style="max-height:460px; overflow:auto; border:1px solid #ccc; padding:4px;"></div>
+            </details>
+
+            <div class="board-row">
+                <canvas id="board" width="480" height="480"></canvas>
+                <div class="moves-panel card">
+                    <div><strong>Moves</strong></div>
+                    <div class="moves-header">
+                        <div>White</div>
+                        <div>Black</div>
+                    </div>
+                    <div id="plyList"></div>
+                </div>
             </div>
+
+            <div id="promotionChooser" hidden>
+                <span>Promote to:</span>
+                <button type="button" data-piece-type="4"></button>
+                <button type="button" data-piece-type="3"></button>
+                <button type="button" data-piece-type="2"></button>
+                <button type="button" data-piece-type="1"></button>
+            </div>
+
+            <details class="card" open>
+                <summary>Position / Notation</summary>
+                <div class="notation-row">
+                    <label for="fenText">FEN:</label>
+                    <input id="fenText" type="text" size="80">
+                    <button id="copyFen" type="button">Copy FEN</button>
+                    <button id="loadFen" type="button">Load FEN</button>
+                    <button id="forceEngineMove" type="button">Force Engine Move</button>
+                </div>
+                <div class="notation-row">
+                    <label for="pgnText">PGN:</label>
+                </div>
+                <div class="notation-row">
+                    <textarea id="pgnText" rows="6" cols="80"></textarea>
+                </div>
+                <div class="notation-row">
+                    <button id="copyPgn" type="button">Copy PGN</button>
+                    <button id="loadPgn" type="button">Load PGN</button>
+                </div>
+                <div class="notation-row">
+                    <button id="goStart" type="button">|&lt;</button>
+                    <button id="goBack" type="button">&lt;</button>
+                    <button id="goForward" type="button">&gt;</button>
+                    <button id="goEnd" type="button">&gt;|</button>
+                    <span id="moveInfo"></span>
+                </div>
+            </details>
         </div>
-        <div id="promotionChooser" hidden>
-            <span>Promote to:</span>
-            <button type="button" data-piece-type="4"></button>
-            <button type="button" data-piece-type="3"></button>
-            <button type="button" data-piece-type="2"></button>
-            <button type="button" data-piece-type="1"></button>
-        </div>
-        <details open>
-            <summary>Position / Notation</summary>
-            <div>
-                <label for="fenText">FEN:</label>
-                <input id="fenText" type="text" size="80">
-                <button id="copyFen" type="button">Copy FEN</button>
-                <button id="loadFen" type="button">Load FEN</button>
-                <button id="forceEngineMove" type="button">Force Engine Move</button>
-            </div>
-            <div>
-                <label for="pgnText">PGN:</label><br>
-                <textarea id="pgnText" rows="6" cols="80"></textarea>
-            </div>
-            <div>
-                <button id="copyPgn" type="button">Copy PGN</button>
-                <button id="loadPgn" type="button">Load PGN</button>
-            </div>
-            <div>
-                <button id="goStart" type="button">|&lt;</button>
-                <button id="goBack" type="button">&lt;</button>
-                <button id="goForward" type="button">&gt;</button>
-                <button id="goEnd" type="button">&gt;|</button>
-                <span id="moveInfo"></span>
-            </div>
-        </details>
         <script defer src="code.js"></script>
         <script defer src="engine.js"></script>
         <script defer src="ui.js"></script>
