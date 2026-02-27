@@ -10,10 +10,18 @@ let engineDeveloperBiasModes = {
 
 let engineDeveloperBiasMode = engineDeveloperBiasModes.optimizedFast;
 
-let whiteMinorStartSquares = [1, 2, 5, 6];
-let blackMinorStartSquares = [57, 58, 61, 62];
-let whiteMinorCenterSquares = [18, 19, 20, 21];
-let blackMinorCenterSquares = [42, 43, 44, 45];
+function buildSquareMask(indices) {
+    let mask = new Uint8Array(64);
+    for (let i = 0; i < indices.length; i++) {
+        mask[indices[i]] = 1;
+    }
+    return mask;
+}
+
+let whiteMinorStartMask = buildSquareMask([1, 2, 5, 6]);
+let blackMinorStartMask = buildSquareMask([57, 58, 61, 62]);
+let whiteMinorCenterMask = buildSquareMask([18, 19, 20, 21]);
+let blackMinorCenterMask = buildSquareMask([42, 43, 44, 45]);
 
 function findKingIndex(board, player) {
     for (let i = 0; i < board.length; i++) {
@@ -81,17 +89,17 @@ function scoreDevelopment(board) {
 
         if (square.pieceType == 1 || square.pieceType == 2) {
             if (square.player == 0) {
-                if (whiteMinorStartSquares.indexOf(i) == -1) {
+                if (whiteMinorStartMask[i] == 0) {
                     score += 120;
                 }
-                if (whiteMinorCenterSquares.indexOf(i) >= 0) {
+                if (whiteMinorCenterMask[i] == 1) {
                     score += 60;
                 }
             } else {
-                if (blackMinorStartSquares.indexOf(i) == -1) {
+                if (blackMinorStartMask[i] == 0) {
                     score -= 120;
                 }
-                if (blackMinorCenterSquares.indexOf(i) >= 0) {
+                if (blackMinorCenterMask[i] == 1) {
                     score -= 60;
                 }
             }
@@ -172,9 +180,8 @@ function scoreMoveHeuristic(board, move){
 }
 
 function orderMoves(board, legalMoves){
-    let moves = legalMoves.slice();
-    moves.sort((a, b) => scoreMoveHeuristic(board, b) - scoreMoveHeuristic(board, a));
-    return moves;
+    legalMoves.sort((a, b) => scoreMoveHeuristic(board, b) - scoreMoveHeuristic(board, a));
+    return legalMoves;
 }
 
 function scorePositionTree(board, player, pliesLeft, gameNotes, alpha, beta){

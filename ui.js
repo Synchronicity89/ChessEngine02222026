@@ -172,8 +172,33 @@ function goToPly(targetPly) {
 
 function copyTextToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch(function () {
+            copyTextToClipboardFallback(text);
+        });
+        return;
     }
+
+    copyTextToClipboardFallback(text);
+}
+
+function copyTextToClipboardFallback(text) {
+    let tempTextArea = document.createElement("textarea");
+    tempTextArea.value = text;
+    tempTextArea.setAttribute("readonly", "readonly");
+    tempTextArea.style.position = "fixed";
+    tempTextArea.style.left = "-9999px";
+    tempTextArea.style.opacity = "0";
+
+    document.body.appendChild(tempTextArea);
+    tempTextArea.focus();
+    tempTextArea.select();
+
+    try {
+        document.execCommand("copy");
+    } catch (err) {
+    }
+
+    document.body.removeChild(tempTextArea);
 }
 
 function getDefaultViewStateForHumanSide() {
