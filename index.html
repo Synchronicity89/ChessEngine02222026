@@ -4,6 +4,10 @@
         <meta charset="utf-8">
         <title>Chess Engine Test UI</title>
         <style>
+            :root {
+                color-scheme: light dark;
+            }
+
             body {
                 margin: 0;
                 font-family: Arial, Helvetica, sans-serif;
@@ -36,6 +40,10 @@
                 gap: 8px;
                 align-items: center;
                 margin-bottom: 12px;
+            }
+
+            .toolbar span {
+                line-height: 1.2;
             }
 
             button,
@@ -84,7 +92,17 @@
                 margin-bottom: 12px;
             }
 
+            .board-shell {
+                width: min(calc(100vw - 300px), calc(100dvh - 190px));
+                max-width: 860px;
+                min-width: 280px;
+            }
+
             #board {
+                display: block;
+                width: 100%;
+                height: auto;
+                aspect-ratio: 1 / 1;
                 border: 1px solid #a8a8a8;
                 border-radius: 4px;
                 background: #fff;
@@ -142,6 +160,98 @@
                 width: min(100%, 780px);
                 box-sizing: border-box;
             }
+
+            @media (max-width: 900px) {
+                .app {
+                    padding: 10px;
+                }
+
+                .toolbar {
+                    gap: 10px;
+                }
+
+                button,
+                select,
+                input,
+                textarea {
+                    font-size: 16px;
+                }
+
+                button,
+                select,
+                input {
+                    min-height: 38px;
+                }
+
+                .board-row {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+
+                .board-shell {
+                    width: min(calc(100vw - 20px), calc(100dvh - 260px));
+                    max-width: none;
+                    min-width: 240px;
+                    margin: 0 auto;
+                }
+
+                .moves-panel {
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+
+                #plyList {
+                    max-height: 200px;
+                }
+            }
+
+            @media (max-width: 900px) and (orientation: portrait) {
+                .moves-panel {
+                    display: none;
+                }
+
+                .board-shell {
+                    width: min(calc(100vw - 16px), calc(100dvh - 225px));
+                }
+            }
+
+            @media (prefers-color-scheme: dark) {
+                body {
+                    background: #1f1f1f;
+                    color: #e8e8e8;
+                }
+
+                #status,
+                .card,
+                #promotionChooser {
+                    background: #2a2a2a;
+                    border-color: #3f3f3f;
+                    color: #e8e8e8;
+                }
+
+                #board {
+                    background: #2a2a2a;
+                    border-color: #555;
+                }
+
+                #plyList {
+                    background: #242424;
+                    border-color: #4a4a4a;
+                }
+
+                button,
+                select,
+                input,
+                textarea {
+                    background: #303030;
+                    color: #ededed;
+                    border: 1px solid #5a5a5a;
+                }
+
+                button:hover {
+                    background: #3a3a3a;
+                }
+            }
         </style>
     </head>
     <body>
@@ -196,7 +306,9 @@
             </details>
 
             <div class="board-row">
-                <canvas id="board" width="480" height="480"></canvas>
+                <div class="board-shell">
+                    <canvas id="board" width="480" height="480"></canvas>
+                </div>
                 <div class="moves-panel card">
                     <div><strong>Moves</strong></div>
                     <div class="moves-header">

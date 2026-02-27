@@ -306,6 +306,24 @@ function getPieceImage(player, pieceType) {
     return pieceImages[player + "_" + pieceType];
 }
 
+function resizeBoardCanvas() {
+    let displaySize = Math.floor(canvas.clientWidth || 0);
+    if (displaySize <= 0) {
+        return;
+    }
+
+    if (canvas.width != displaySize || canvas.height != displaySize) {
+        canvas.width = displaySize;
+        canvas.height = displaySize;
+    }
+
+    squareSize = canvas.width / 8;
+
+    if (typeof board != "undefined" && Array.isArray(board)) {
+        drawBoard();
+    }
+}
+
 function drawCoordinates() {
     ctx.font = "12px sans-serif";
     ctx.textAlign = "left";
@@ -494,7 +512,7 @@ function drawBoard() {
         let image = getPieceImage(cell.player, cell.pieceType);
 
         if (image && image.complete && image.naturalWidth > 0) {
-            let margin = squareSize * 0.08;
+            let margin = squareSize * 0.04;
             ctx.drawImage(
                 image,
                 displayPos.x * squareSize + margin,
@@ -855,3 +873,8 @@ document.addEventListener("keyup", function (event) {
 
 loadPieceImages();
 resetGame();
+resizeBoardCanvas();
+
+window.addEventListener("resize", function () {
+    resizeBoardCanvas();
+});
