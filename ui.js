@@ -10,6 +10,8 @@ let viewInfo = document.getElementById("viewInfo");
 let defaultPromotionPieceSelect = document.getElementById("defaultPromotionPiece");
 let useDefaultPromotionCheckbox = document.getElementById("useDefaultPromotion");
 let promotionBypassKeyInput = document.getElementById("promotionBypassKey");
+let enginePlyDepthInput = document.getElementById("enginePlyDepth");
+let developerBiasModeSelect = document.getElementById("developerBiasMode");
 let promotionChooser = document.getElementById("promotionChooser");
 let promotionButtons = promotionChooser.querySelectorAll("button[data-piece-type]");
 let fenTextInput = document.getElementById("fenText");
@@ -39,6 +41,7 @@ let moveHistory = [];
 let currentPly = 0;
 let gameStartPlayer = 0;
 let gameResult = "*";
+let engineSearchPly = 4;
 
 let boardViewStates = {
     whiteBottom: "whiteBottom",
@@ -55,6 +58,18 @@ let pieceSymbols = {
     4: ["♕", "♛"],
     5: ["♔", "♚"]
 };
+
+let pieceImageFileMap = {
+    0: "P",
+    1: "N",
+    2: "B",
+    3: "R",
+    4: "Q",
+    5: "K"
+};
+
+let pieceImages = {};
+let pendingPieceImageLoads = 0;
 
 function isViewingHistory() {
     return currentPly != positionHistory.length - 1;
@@ -157,8 +172,33 @@ function goToPly(targetPly) {
 
 function copyTextToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).catch(function () {
+            copyTextToClipboardFallback(text);
+        });
+        return;
     }
+
+    copyTextToClipboardFallback(text);
+}
+
+function copyTextToClipboardFallback(text) {
+    let tempTextArea = document.createElement("textarea");
+    tempTextArea.value = text;
+    tempTextArea.setAttribute("readonly", "readonly");
+    tempTextArea.style.position = "fixed";
+    tempTextArea.style.left = "-9999px";
+    tempTextArea.style.opacity = "0";
+
+    document.body.appendChild(tempTextArea);
+    tempTextArea.focus();
+    tempTextArea.select();
+
+    try {
+        document.execCommand("copy");
+    } catch (err) {
+    }
+
+    document.body.removeChild(tempTextArea);
 }
 
 function getDefaultViewStateForHumanSide() {
@@ -217,9 +257,96 @@ function getSideName(player) {
     return player == 0 ? "White" : "Black";
 }
 
+function clampEnginePly(value) {
+    if (isNaN(value)) {
+        return 4;
+    }
+
+    return Math.max(1, Math.min(8, Math.floor(value)));
+}
+
+function applyEnginePlyInputValue(showStatus) {
+    if (!enginePlyDepthInput) {
+        return;
+    }
+
+    engineSearchPly = clampEnginePly(parseInt(enginePlyDepthInput.value));
+    enginePlyDepthInput.value = String(engineSearchPly);
+
+    if (showStatus) {
+        statusText.textContent = "Engine ply depth set to " + engineSearchPly + ".";
+    }
+}
+
+function applyDeveloperBiasMode(showStatus) {
+    if (!developerBiasModeSelect || typeof setEngineDeveloperBiasMode != "function") {
+        return;
+    }
+
+    let selectedMode = developerBiasModeSelect.value;
+    let appliedMode = setEngineDeveloperBiasMode(selectedMode);
+    developerBiasModeSelect.value = appliedMode;
+
+    if (showStatus) {
+        if (appliedMode == "upstreamSlow") {
+            statusText.textContent = "Developer bias mode set to Upstream mobility (slow).";
+        } else {
+            statusText.textContent = "Developer bias mode set to Optimized (fast).";
+        }
+    }
+}
+
 function updateViewInfo() {
     let bottomPlayer = boardViewState == boardViewStates.whiteBottom ? 0 : 1;
     viewInfo.textContent = "You: " + getSideName(humanPlayer) + " | Bottom: " + getSideName(bottomPlayer);
+}
+
+function loadPieceImages() {
+    pendingPieceImageLoads = 0;
+
+    for (let player = 0; player <= 1; player++) {
+        for (let pieceType = 0; pieceType <= 5; pieceType++) {
+            let pieceCode = pieceImageFileMap[pieceType];
+            let colorCode = player == 0 ? "w" : "b";
+            let key = player + "_" + pieceType;
+            let img = new Image();
+            pendingPieceImageLoads ++;
+
+            img.addEventListener("load", function () {
+                pendingPieceImageLoads --;
+                drawBoard();
+            });
+
+            img.addEventListener("error", function () {
+                pendingPieceImageLoads --;
+            });
+
+            img.src = "./public/piece/cburnett/" + colorCode + pieceCode + ".svg";
+            pieceImages[key] = img;
+        }
+    }
+}
+
+function getPieceImage(player, pieceType) {
+    return pieceImages[player + "_" + pieceType];
+}
+
+function resizeBoardCanvas() {
+    let displaySize = Math.floor(canvas.clientWidth || 0);
+    if (displaySize <= 0) {
+        return;
+    }
+
+    if (canvas.width != displaySize || canvas.height != displaySize) {
+        canvas.width = displaySize;
+        canvas.height = displaySize;
+    }
+
+    squareSize = canvas.width / 8;
+
+    if (typeof board != "undefined" && Array.isArray(board)) {
+        drawBoard();
+    }
 }
 
 function drawCoordinates() {
@@ -414,10 +541,6 @@ function drawBoard() {
         ctx.fill();
     }
 
-    ctx.font = "40px serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
     for (let i = 0; i < board.length; i++) {
         let cell = board[i];
         if (cell.player == undefined || cell.pieceType == undefined) {
@@ -425,8 +548,25 @@ function drawBoard() {
         }
 
         let displayPos = boardIndexToDisplay(i);
+        let image = getPieceImage(cell.player, cell.pieceType);
+
+        if (image && image.complete && image.naturalWidth > 0) {
+            let margin = squareSize * 0.04;
+            ctx.drawImage(
+                image,
+                displayPos.x * squareSize + margin,
+                displayPos.y * squareSize + margin,
+                squareSize - margin * 2,
+                squareSize - margin * 2
+            );
+            continue;
+        }
+
         let symbol = pieceSymbols[cell.pieceType][cell.player];
 
+        ctx.font = "40px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillStyle = cell.player == 0 ? "#111" : "#000";
         ctx.fillText(symbol, displayPos.x * squareSize + squareSize / 2, displayPos.y * squareSize + squareSize / 2 + 2);
     }
@@ -665,6 +805,7 @@ function forceEngineMoveFromCurrentPosition() {
     if (!engineMove || !isMoveInList(engineMove, strictMoves)) {
         engineMove = strictMoves[0];
     }
+
     if (!engineMove) {
         statusText.textContent = "No legal moves for " + getSideName(movingPlayer) + ".";
         drawBoard();
@@ -806,6 +947,25 @@ if (forceEngineMoveButton) {
     });
 }
 
+if (enginePlyDepthInput) {
+    applyEnginePlyInputValue(false);
+
+    enginePlyDepthInput.addEventListener("change", function () {
+        applyEnginePlyInputValue(true);
+    });
+}
+
+if (developerBiasModeSelect) {
+    if (typeof getEngineDeveloperBiasMode == "function") {
+        developerBiasModeSelect.value = getEngineDeveloperBiasMode();
+    }
+    applyDeveloperBiasMode(false);
+
+    developerBiasModeSelect.addEventListener("change", function () {
+        applyDeveloperBiasMode(true);
+    });
+}
+
 copyPgnButton.addEventListener("click", function () {
     let pgnText = coreBuildPgnText(moveHistory, gameStartPlayer, gameResult);
     copyTextToClipboard(pgnText);
@@ -900,4 +1060,10 @@ document.addEventListener("keyup", function (event) {
     }
 });
 
+loadPieceImages();
 resetGame();
+resizeBoardCanvas();
+
+window.addEventListener("resize", function () {
+    resizeBoardCanvas();
+});

@@ -226,7 +226,7 @@ function scoreMoveHeuristic(board, move){
     }
 
     if (move.notes && move.notes[0] == "castle") {
-        score += 2;
+        score += 200;
     }
 
     return score;
