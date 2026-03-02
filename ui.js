@@ -308,6 +308,14 @@ function findPromotionMoveByPieceType(pieceType) {
 }
 
 function completeHumanMove(chosenMove) {
+    let strictMoves = getStrictLegalMovesForCurrentBoard(humanPlayer);
+    if (!isMoveInList(chosenMove, strictMoves)) {
+        statusText.textContent = "That move is not legal.";
+        clearSelection();
+        drawBoard();
+        return;
+    }
+
     let boardBefore = coreCloneBoardState(board);
     let legalMoves = getMovesForPlayer(humanPlayer);
     let moveRecord = coreCreateMoveRecord(chosenMove, boardBefore, humanPlayer, legalMoves, coreGetGameNotes());
@@ -316,6 +324,12 @@ function completeHumanMove(chosenMove) {
     hidePromotionChooser();
     whoseTurn = enginePlayer;
     pushCurrentPosition(moveRecord);
+
+    let nextState = updateTerminalGameStateForTurn(enginePlayer);
+    if (nextState.ended) {
+        return;
+    }
+
     if (coreIsThreefold(coreGetGameNotes())) {
         statusText.textContent = "Threefold repetition detected. Engine thinking...";
     } else {
@@ -430,6 +444,108 @@ function getMovesForPlayer(player) {
     }
 }
 
+function movesAreSame(moveA, moveB) {
+    if (!moveA || !moveB) {
+        return false;
+    }
+
+    if (moveA.pieceIndex != moveB.pieceIndex || moveA.moveTo != moveB.moveTo) {
+        return false;
+    }
+
+    let notesA = moveA.notes || [];
+    let notesB = moveB.notes || [];
+    if (notesA.length != notesB.length) {
+        return false;
+    }
+
+    for (let i = 0; i < notesA.length; i++) {
+        if (notesA[i] != notesB[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function isMoveInList(move, moveList) {
+    for (let i = 0; i < moveList.length; i++) {
+        if (movesAreSame(move, moveList[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function getKingIndexForPlayer(boardState, player, notesState) {
+    if (notesState) {
+        let noteIndex = player == 0 ? notesState.kw : notesState.kb;
+        if (typeof noteIndex == "number" && noteIndex >= 0 && noteIndex < 64) {
+            return noteIndex;
+        }
+    }
+
+    for (let i = 0; i < boardState.length; i++) {
+        if (boardState[i].player == player && boardState[i].pieceType == 5) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+function isPlayerInCheckOnState(boardState, player, notesState) {
+    let kingIndex = getKingIndexForPlayer(boardState, player, notesState);
+    if (kingIndex < 0) {
+        return false;
+    }
+
+    return isSquareAttackedBy(boardState, kingIndex, 1 - player);
+}
+
+function getStrictLegalMovesForState(boardState, player, notesState) {
+    let pseudoMoves = getLegalMoves(boardState, player, notesState);
+    let strictMoves = [];
+
+    for (let i = 0; i < pseudoMoves.length; i++) {
+        let nextNotes = coreCloneGameNotes(notesState);
+        let nextBoard = applyMoveToBoardState(boardState, pseudoMoves[i], nextNotes);
+        if (!isPlayerInCheckOnState(nextBoard, player, nextNotes)) {
+            strictMoves.push(pseudoMoves[i]);
+        }
+    }
+
+    return strictMoves;
+}
+
+function getStrictLegalMovesForCurrentBoard(player) {
+    return getStrictLegalMovesForState(board, player, coreGetGameNotes());
+}
+
+function updateTerminalGameStateForTurn(playerToMove) {
+    let strictMoves = getStrictLegalMovesForCurrentBoard(playerToMove);
+    if (strictMoves.length > 0) {
+        return {ended: false, strictMoves: strictMoves};
+    }
+
+    let inCheck = isPlayerInCheckOnState(board, playerToMove, coreGetGameNotes());
+    if (inCheck) {
+        gameResult = playerToMove == 0 ? "0-1" : "1-0";
+        statusText.textContent = "Checkmate. " + getSideName(1 - playerToMove) + " wins.";
+    } else {
+        gameResult = "1/2-1/2";
+        statusText.textContent = "Draw by stalemate.";
+    }
+
+    drawBoard();
+    return {ended: true, strictMoves: []};
+}
+
+function isGameOver() {
+    return gameResult != "*";
+}
+
 function makeMove(move) {
     applyMoveInPlace(board, move, coreGetGameNotes());
 }
@@ -458,7 +574,17 @@ function clearSelection() {
 }
 
 function pickEngineMove(){
-    return getBestMove(board, enginePlayer, 4);
+    let strictMoves = getStrictLegalMovesForCurrentBoard(enginePlayer);
+    if (strictMoves.length == 0) {
+        return undefined;
+    }
+
+    let candidateMove = getBestMove(board, enginePlayer, engineSearchPly);
+    if (candidateMove && isMoveInList(candidateMove, strictMoves)) {
+        return candidateMove;
+    }
+
+    return strictMoves[0];
 }
 
 function pickRandomEngineMove() {
@@ -471,6 +597,10 @@ function pickRandomEngineMove() {
 }
 
 function engineTurn() {
+    if (isGameOver()) {
+        return;
+    }
+
     if (whoseTurn != enginePlayer) {
         return;
     }
@@ -479,9 +609,14 @@ function engineTurn() {
         return;
     }
 
+    let stateBeforeEngineMove = updateTerminalGameStateForTurn(enginePlayer);
+    if (stateBeforeEngineMove.ended) {
+        return;
+    }
+
     let engineMove = pickEngineMove();
     if (!engineMove) {
-        statusText.textContent = "Engine has no legal moves.";
+        updateTerminalGameStateForTurn(enginePlayer);
         drawBoard();
         return;
     }
@@ -492,6 +627,12 @@ function engineTurn() {
     makeMove(engineMove);
     whoseTurn = humanPlayer;
     pushCurrentPosition(moveRecord);
+
+    let stateAfterEngineMove = updateTerminalGameStateForTurn(humanPlayer);
+    if (stateAfterEngineMove.ended) {
+        return;
+    }
+
     if (coreIsThreefold(coreGetGameNotes())) {
         statusText.textContent = "Threefold repetition detected. Your turn.";
     } else {
@@ -501,6 +642,10 @@ function engineTurn() {
 }
 
 function forceEngineMoveFromCurrentPosition() {
+    if (isGameOver()) {
+        return;
+    }
+
     if (isViewingHistory()) {
         statusText.textContent = "Use >| to return to the latest move before forcing an engine move.";
         return;
@@ -510,7 +655,16 @@ function forceEngineMoveFromCurrentPosition() {
     hidePromotionChooser();
 
     let movingPlayer = whoseTurn;
-    let engineMove = getBestMove(board, movingPlayer, 4);
+    let strictMoves = getStrictLegalMovesForCurrentBoard(movingPlayer);
+    if (strictMoves.length == 0) {
+        updateTerminalGameStateForTurn(movingPlayer);
+        return;
+    }
+
+    let engineMove = getBestMove(board, movingPlayer, engineSearchPly);
+    if (!engineMove || !isMoveInList(engineMove, strictMoves)) {
+        engineMove = strictMoves[0];
+    }
     if (!engineMove) {
         statusText.textContent = "No legal moves for " + getSideName(movingPlayer) + ".";
         drawBoard();
@@ -524,6 +678,11 @@ function forceEngineMoveFromCurrentPosition() {
     whoseTurn = 1 - movingPlayer;
     pushCurrentPosition(moveRecord);
 
+    let nextState = updateTerminalGameStateForTurn(whoseTurn);
+    if (nextState.ended) {
+        return;
+    }
+
     if (coreIsThreefold(coreGetGameNotes())) {
         statusText.textContent = "Threefold repetition detected.";
     } else {
@@ -534,6 +693,10 @@ function forceEngineMoveFromCurrentPosition() {
 }
 
 canvas.addEventListener("click", function (event) {
+    if (isGameOver()) {
+        return;
+    }
+
     if (isViewingHistory()) {
         statusText.textContent = "Use >| to return to the latest move before playing.";
         return;
@@ -569,7 +732,7 @@ canvas.addEventListener("click", function (event) {
 
     if (board[square].player == humanPlayer) {
         selectedSquare = square;
-        let allMoves = getMovesForPlayer(humanPlayer);
+        let allMoves = getStrictLegalMovesForCurrentBoard(humanPlayer);
         highlightedMoves = [];
 
         for (let i = 0; i < allMoves.length; i++) {

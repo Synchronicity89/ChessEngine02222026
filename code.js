@@ -27,6 +27,8 @@ function coreCreateGameNotes() {
         f: 1,
         p: 0,
         r: {},
+        kw: 4,
+        kb: 60,
         k: "",
         t: 0
     };
@@ -47,6 +49,8 @@ function coreCloneGameNotes(notes) {
         f: source.f,
         p: source.p,
         r: repetition,
+        kw: typeof source.kw == "number" ? source.kw : 4,
+        kb: typeof source.kb == "number" ? source.kb : 60,
         k: source.k,
         t: source.t
     };
@@ -289,6 +293,11 @@ function applyMoveInPlace(boardState, move, gameNotes) {
 
     if (movingPieceType == 5) {
         notesState.c &= movingPlayer == 0 ? ~(CORE_C_WK | CORE_C_WQ) : ~(CORE_C_BK | CORE_C_BQ);
+        if (movingPlayer == 0) {
+            notesState.kw = to;
+        } else {
+            notesState.kb = to;
+        }
     }
 
     if (movingPieceType == 3) {
@@ -731,6 +740,7 @@ function coreParseFenToState(fenText) {
         throw new Error("FEN piece placement must have 8 ranks.");
     }
 
+    let notesState = coreCreateGameNotes();
     let newBoard = [];
     for (let i = 0; i < 64; i++) {
         newBoard.push({pieceType: undefined, player: undefined, notes: []});
@@ -764,6 +774,14 @@ function coreParseFenToState(fenText) {
                 player: player,
                 notes: []
             };
+
+            if (pieceType == 5) {
+                if (player == 0) {
+                    notesState.kw = y * 8 + file;
+                } else {
+                    notesState.kb = y * 8 + file;
+                }
+            }
             file++;
         }
 
@@ -777,7 +795,6 @@ function coreParseFenToState(fenText) {
         throw new Error("FEN side to move must be w or b.");
     }
 
-    let notesState = coreCreateGameNotes();
     notesState.c = 0;
 
     let castling = parts.length > 2 ? parts[2] : "-";
