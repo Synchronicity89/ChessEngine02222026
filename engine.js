@@ -9,6 +9,14 @@ let engineDeveloperBiasModes = {
 };
 
 let engineDeveloperBiasMode = engineDeveloperBiasModes.optimizedFast;
+let enginePieceValues = new Int32Array([
+    pieceTypes[0].value,
+    pieceTypes[1].value,
+    pieceTypes[2].value,
+    pieceTypes[3].value,
+    pieceTypes[4].value,
+    pieceTypes[5].value
+]);
 
 function buildSquareMask(indices) {
     let mask = new Uint8Array(64);
@@ -32,6 +40,17 @@ function findKingIndex(board, player) {
     }
 
     return -1;
+}
+
+function getKingIndexForPlayer(board, player, notesState) {
+    if (notesState) {
+        let noteKingIndex = player == 0 ? notesState.kw : notesState.kb;
+        if (typeof noteKingIndex == "number" && noteKingIndex >= 0 && noteKingIndex < 64) {
+            return noteKingIndex;
+        }
+    }
+
+    return findKingIndex(board, player);
 }
 
 function isKingCastled(player, kingIndex) {
@@ -69,8 +88,8 @@ function getSideCastlingPenalty(player, notesState, kingIndex) {
 
 function scoreCastlingRights(board, gameNotes) {
     let notesState = gameNotes || coreGetGameNotes();
-    let whiteKingIndex = findKingIndex(board, 0);
-    let blackKingIndex = findKingIndex(board, 1);
+    let whiteKingIndex = getKingIndexForPlayer(board, 0, notesState);
+    let blackKingIndex = getKingIndexForPlayer(board, 1, notesState);
 
     let whitePenalty = getSideCastlingPenalty(0, notesState, whiteKingIndex);
     let blackPenalty = getSideCastlingPenalty(1, notesState, blackKingIndex);
@@ -144,14 +163,48 @@ function getEngineDeveloperBiasMode() {
 }
 
 function scorePosition(board, player, gameNotes){
-    let score = 0;
+    let materialScore = 0;
+    let developmentScore = 0;
+
     for (let i=0; i<board.length; i++) {
         let square = board[i];
         if (square.player != undefined) {
-            score += pieceTypes[square.pieceType].value*playerToPosNeg[square.player];
+            materialScore += enginePieceValues[square.pieceType] * playerToPosNeg[square.player];
+
+            if (square.pieceType == 1 || square.pieceType == 2) {
+                if (square.player == 0) {
+                    if (whiteMinorStartMask[i] == 0) {
+                        developmentScore += 120;
+                    }
+                    if (whiteMinorCenterMask[i] == 1) {
+                        developmentScore += 60;
+                    }
+                } else {
+                    if (blackMinorStartMask[i] == 0) {
+                        developmentScore -= 120;
+                    }
+                    if (blackMinorCenterMask[i] == 1) {
+                        developmentScore -= 60;
+                    }
+                }
+            }
+
+            if (square.pieceType == 5) {
+                if (square.player == 0 && (i == 6 || i == 2)) {
+                    developmentScore += 90;
+                } else if (square.player == 1 && (i == 62 || i == 58)) {
+                    developmentScore -= 90;
+                }
+            }
         }
     }
-    score += scoreDeveloperBias(board, gameNotes);
+
+    let score = materialScore;
+    if (engineDeveloperBiasMode == engineDeveloperBiasModes.upstreamSlow) {
+        score += scoreUpstreamMobility(board, gameNotes);
+    } else {
+        score += developmentScore;
+    }
     score += scoreCastlingRights(board, gameNotes);
     return score;
 }
@@ -161,15 +214,15 @@ function scoreMoveHeuristic(board, move){
     let targetSquare = board[move.moveTo];
 
     if (targetSquare.player != undefined && targetSquare.pieceType != undefined) {
-        score += pieceTypes[targetSquare.pieceType].value * 10;
+        score += enginePieceValues[targetSquare.pieceType] * 10;
     }
 
     if (move.notes && move.notes[0] == "ep") {
-        score += pieceTypes[0].value * 10;
+        score += enginePieceValues[0] * 10;
     }
 
     if (move.notes && move.notes[0] == "promote") {
-        score += pieceTypes[move.notes[1]].value;
+        score += enginePieceValues[move.notes[1]];
     }
 
     if (move.notes && move.notes[0] == "castle") {
@@ -180,7 +233,44 @@ function scoreMoveHeuristic(board, move){
 }
 
 function orderMoves(board, legalMoves){
-    legalMoves.sort((a, b) => scoreMoveHeuristic(board, b) - scoreMoveHeuristic(board, a));
+    if (legalMoves.length < 2) {
+        return legalMoves;
+    }
+
+    let bestIndex = 0;
+    let bestScore = scoreMoveHeuristic(board, legalMoves[0]);
+    for (let i = 1; i < legalMoves.length; i++) {
+        let score = scoreMoveHeuristic(board, legalMoves[i]);
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = i;
+        }
+    }
+
+    if (bestIndex != 0) {
+        let temp = legalMoves[0];
+        legalMoves[0] = legalMoves[bestIndex];
+        legalMoves[bestIndex] = temp;
+    }
+
+    if (legalMoves.length > 2) {
+        let secondBestIndex = 1;
+        let secondBestScore = scoreMoveHeuristic(board, legalMoves[1]);
+        for (let i = 2; i < legalMoves.length; i++) {
+            let score = scoreMoveHeuristic(board, legalMoves[i]);
+            if (score > secondBestScore) {
+                secondBestScore = score;
+                secondBestIndex = i;
+            }
+        }
+
+        if (secondBestIndex != 1) {
+            let temp = legalMoves[1];
+            legalMoves[1] = legalMoves[secondBestIndex];
+            legalMoves[secondBestIndex] = temp;
+        }
+    }
+
     return legalMoves;
 }
 
